@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    background-color: #0B0F17;
+    color: #E2E8F0;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .text-glow-orange {
+    text-shadow: 0 0 10px rgba(255, 106, 0, 0.55), 0 0 24px rgba(255, 106, 0, 0.25);
+  }
+  .text-glow-green {
+    text-shadow: 0 0 10px rgba(57, 255, 122, 0.6), 0 0 24px rgba(57, 255, 122, 0.25);
+  }
+  .card-grid-bg {
+    background-image:
+      linear-gradient(rgba(255, 106, 0, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 106, 0, 0.06) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #0F1420;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #33415C;
+    border-radius: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #FF6A00;
+  }
+}
