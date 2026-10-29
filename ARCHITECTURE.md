@@ -138,7 +138,27 @@ These are facts read from the repository, each to be closed by a step in §2.9.
   The migration headers describe this as intentional for a no-sign-in shared dashboard. It is
   still an unauthenticated public write surface and the proposed design removes it.
 
-  **Escalated 2026-10-29.** The anon key is not merely embeddable, it is already published:
+  **Escalated 2026-10-29, then re-scoped the same day — read this before acting.** The exposed
+  Supabase project `ycunhpuedmrulggdxkvb` **does not belong to this repository's owner.** Checked
+  against the signed-in Supabase account, which holds exactly three projects —
+  `qr-menu-app` (`myjpyklwkrjdjedcnssl`), `thai-saas-tax` (`xywrusvxouvzjmoyyxhw`) and
+  `localrank-ai` (`ldvsgjglnulkmomokfln`) — and the dashboard redirects
+  `/project/ycunhpuedmrulggdxkvb` to the organisation list. The bundle carrying the key was
+  committed upstream (`2515610 Add files via upload`, inherited by this fork from
+  `nxdklx465/Projecthamsterhub`), so the project is the upstream author's.
+
+  Consequences, which override everything written below in this bullet:
+  - **Do not apply any migration, run any write, or change any setting on
+    `ycunhpuedmrulggdxkvb`.** It is a third party's live system. The RLS migration in this
+    repository targets *this project's own* Supabase instance, once one exists.
+  - The key cannot be rotated from here; only the upstream author can do that. The correct
+    action is responsible disclosure to `nxdklx465`, not remediation.
+  - This fork republishes someone else's credential in its own `main` history. Removing
+    `dist/` from the index (IMPL-0) does not remove it from history; making the fork private or
+    purging that path is a courtesy to the key's owner, not a fix for this project.
+
+  The original escalation, retained because it still describes the schema defect this
+  repository must not repeat: the anon key is not merely embeddable, it is already published:
   `project/dist/assets/index-DRT4vokJ.js` is committed to `main` (`2515610`) and carries the
   live project URL `https://ycunhpuedmrulggdxkvb.supabase.co` together with an anon JWT
   (`role: anon`, `exp` 2108756967 ≈ 2036), and the GitHub repository is public. Combined with
@@ -458,7 +478,8 @@ No step below is started by this task.
 | Step | Deliverable | Done when |
 | --- | --- | --- |
 | IMPL-0 | `.gitignore` at the git root; `project/dist/` removed from the index | `git status` clean after `npm install`; closes D3 — **done**, `19ba2ff` |
-| IMPL-0a | **Operator actions on the D1 exposure, not code.** Apply `20261029093000_tighten_rls_anon_read_only.sql`; rotate the anon key and JWT secret in the Supabase dashboard; audit `rooms`, `logs` and `energy_readings` for third-party writes; decide on repository visibility and on purging `dist/` from history | the verification block in that migration passes, including the negative test that must return 401/403 where it previously returned 201; the old token is rejected after rotation |
+| IMPL-0a | **Create this project's own Supabase instance**, apply all migrations to it including `20261029093000_tighten_rls_anon_read_only.sql`, and point `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` at it. The upstream project `ycunhpuedmrulggdxkvb` is out of bounds (D1) | the migration's verification block passes on the new instance: zero write grants for `anon`, SELECT-only policies, and an anon `POST` refused with 401/403 where it succeeds before the migration |
+| IMPL-0b | **Disclosure, not code.** Report the published anon key to `nxdklx465` so the owner can rotate it; decide whether this fork keeps `dist/` in its history | the report is sent; the fork's position on republishing the key is decided |
 | IMPL-1 | `backend/` skeleton: `pyproject.toml`, `Settings`, `errors.py`, `/healthz`, `/readyz`, structured logging | gate block §3.2 passes with a trivial test |
 | IMPL-2 | Migrations `0003`–`0006` with `-- DOWN`, applied to a scratch Supabase project | DDL check plus a reversibility test |
 | IMPL-3 | `store/` repositories + `0007` backfill | row-count and checksum parity against `*_legacy` |
