@@ -1,0 +1,94 @@
+# ProjectHamsterHub / K-SES
+# Covers the existing frontend under project/ and the backend/ service that
+# ARCHITECTURE.md §2 proposes. See ARCHITECTURE.md defect D3 and step IMPL-0.
+
+# --- Secrets: OWASP A02. Never stage a real credential. ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+service-account*.json
+
+# --- Dependencies ---
+node_modules/
+.pnp
+.pnp.js
+.venv/
+venv/
+ENV/
+
+# --- Build output ---
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.Python
+
+# --- Caches and tool state ---
+.cache/
+.parcel-cache/
+.eslintcache
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.scannerwork/
+
+# --- Coverage: the report Sonar expects is generated, not committed (defect D2) ---
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+*.lcov
+
+# --- ML artifacts: rebuilt by backend/scripts/train_detector.py (ARCHITECTURE.md §2.5) ---
+models/
+*.joblib
+*.pkl
+*.onnx
+*.h5
+*.pt
+*.safetensors
+
+# --- Local data dumps: never commit field telemetry ---
+data/raw/
+data/interim/
+*.parquet
+*.feather
+*.sqlite
+*.db
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Local scratch ---
+tmp/
+.tmp/
+scratch/
+
+# --- Editor / OS ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# Note: project/package-lock.json stays TRACKED on purpose — `npm ci` in the
+# verification gate (ARCHITECTURE.md §3.1) requires it.
