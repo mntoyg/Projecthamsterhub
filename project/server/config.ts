@@ -13,6 +13,10 @@ const list = (raw: string | undefined): string[] =>
     .filter(Boolean);
 
 export const config = {
+  /**
+   * Hosts inject this. Render's default is 10000 and the container must bind it;
+   * 8787 is only the local default.
+   */
   port: positive(process.env.PORT, 8787),
   /** ':memory:' keeps a run ephemeral; tests use it. */
   dbFile: process.env.DB_FILE ?? 'server/data/k-ses.db',

@@ -35,14 +35,36 @@ docker run -p 8787:8787 -e CORS_ORIGINS=https://your-dashboard.example k-ses-api
 
 ### On Render
 
-1. New → **Web Service**, connect the GitHub repository.
-2. **Root Directory**: `project`  ← the repository root has no `package.json`.
-3. **Runtime**: Docker (it will find `project/Dockerfile`).
-4. **Health check path**: `/api/health`
-5. Environment variables: `CORS_ORIGINS` = the dashboard's origin, once known.
-   `PORT` and `DB_FILE` already have working defaults in the image.
+Checked against Render's own documentation on 2026-10-29.
+
+1. New → **Web Service**, connect this GitHub repository, pick the branch.
+2. **Language**: `Docker`. Render's docs say to choose this even when the app's
+   language appears in the dropdown.
+3. **Root Directory**: `project` — the repository root has no `package.json`.
+4. **Dockerfile Path**: `Dockerfile`.
+   Render's own pages contradict each other here: the monorepo page says these
+   paths are relative to the Root Directory, the blueprint spec says relative to
+   the repo root. If the build reports it cannot find the Dockerfile, clear Root
+   Directory and set Dockerfile Path to `project/Dockerfile` instead.
+5. **Health Check Path**: `/api/health`
+6. **Environment variables**: `CORS_ORIGINS` = the dashboard's origin, once it
+   exists. Leave `PORT` alone — Render injects its own (default `10000`) and the
+   server reads it. `DB_FILE` already has a working default in the image.
 
 Railway and Fly.io take the same Dockerfile; only the UI differs.
+
+### Render free tier, from the docs
+
+- **No persistent disk.** Free web services cannot attach one. Anything written
+  inside the container — the SQLite file included — is lost on every redeploy,
+  restart and spin-down.
+- **Spins down after 15 minutes** without inbound traffic; spin-up is about a
+  minute, during which visitors see a loading page and the dashboard reads
+  `OFFLINE`.
+- **750 free instance hours per workspace per month.** Past that, free services
+  are suspended until the next month.
+- Render may restart a free service at any time.
+- The service must bind `0.0.0.0`. `server/index.ts` does so explicitly.
 
 ### Settings the image reads
 
@@ -85,11 +107,11 @@ demo rooms reseed and all history is gone. That is acceptable for a demo and mus
 not be described as a database that keeps data. To keep it, attach a persistent
 disk and point `DB_FILE` at it.
 
-**Free tiers sleep.** Render's free web services spin down after inactivity, and
-the next request pays a cold start of roughly a minute. During that minute the
-dashboard shows `OFFLINE`. Before presenting, either wake it with a request a few
-minutes ahead, or use a plan that stays up, or run the API locally and skip the
-network entirely:
+**Free tiers sleep.** Render's free web services spin down after 15 minutes
+without traffic, and the next request pays a cold start of about a minute. During
+that minute the dashboard shows `OFFLINE`. Before presenting, either wake it with
+a request a few minutes ahead, or use a plan that stays up, or run the API
+locally and skip the network entirely:
 
 ```bash
 cd project && npm run server
