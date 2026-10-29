@@ -35,7 +35,7 @@ export const config = {
     alpha: positive(process.env.BASELINE_ALPHA, 0.3),
     /**
      * Standard deviations above the hour's mean that count as abnormal.
-     * 6, not 3: the sweep in ARCHITECTURE.md §2.5 shows recall is flat from k=3
+     * 6, not 3: the sweep in project/ARCHITECTURE.md §8 shows recall is flat from k=3
      * to k=6 while precision climbs from 75% to 90%, so the lower values only
      * buy false positives. Measured on four seeds, synthetic data.
      */

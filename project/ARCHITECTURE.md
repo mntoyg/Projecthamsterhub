@@ -41,15 +41,15 @@ flowchart LR
         ESP["ESP32 + current sensor + PIR<br/>optional 🔲"]
     end
 
-    subgraph BE["Backend (พี่): Node.js + Express 🔲"]
+    subgraph BE["Backend (พี่): Node.js + Express + node:sqlite ✅"]
         API["REST API<br/>POST /api/telemetry"]
         VAL["Validation layer"]
-        ENG["AI วิเคราะห์ (พี่) 🔲<br/>ต้นแบบของเรา: rule + z-score ✅"]
-        ML["ML module 🔲<br/>baseline / anomaly"]
-        SSE["Live stream<br/>Server-Sent Events"]
+        ENG["AI วิเคราะห์ (พี่) ✅<br/>rule + z-score + EWMA"]
+        L3["L3 baseline ✅<br/>statistical anomaly"]
+
     end
 
-    DB[("Database 🔲<br/>SQLite")]
+    DB[("Database ✅<br/>SQLite")]
 
     subgraph FE["Frontend: React + TypeScript ✅"]
         DASH["Dashboard<br/>Beacon / Grid / Chart / Log"]
@@ -60,17 +60,17 @@ flowchart LR
     SIM --> API
     ESP -.-> API
     API --> VAL --> ENG
-    ENG --> ML
+    ENG --> L3
     ENG --> DB
-    ML --> DB
-    ENG --> SSE
-    SSE --> DASH
-    DASH -->|GET /api/rooms, /api/readings| API
+    L3 --> DB
+    DASH -->|GET /api/rooms, /api/readings ทุก 2 วินาที| API
+
+
     API --> DB
     ENG -.-> NOTI
 ```
 
-**สถานะปัจจุบัน:** Frontend + Decision Engine ทำงานครบในโหมด Local (ไม่มี backend) — engine เป็น pure function (`src/engine/energy.ts`) จึงย้ายไปรันฝั่ง server ได้โดยไม่ต้องเขียนใหม่
+**สถานะปัจจุบัน:** Frontend + Decision Engine ทำงานในโหมด Local และมี backend จริงตามสัญญาแล้ว — engine เป็น pure function (`src/engine/energy.ts`) ซึ่ง server import มาใช้ร่วมกัน
 
 ---
 
@@ -94,11 +94,14 @@ sequenceDiagram
         V->>E: reading
         E->>D: ดึงประวัติห้อง 20 ค่าล่าสุด
         E->>E: rule: motion=false และ current >= 7 A
-        E->>E: z-score เทียบประวัติห้อง
+        E->>E: z-score และ L3 baseline
         E->>D: บันทึก reading + status + reasons
         E-->>S: 200 status + reasons
-        E-->>U: SSE event: room_update
-        U->>U: Beacon เขียว/แดงกะพริบ, อัปเดต Log และกราฟ
+    end
+    loop ทุก 2 วินาที
+        U->>A: GET /api/rooms และ GET /api/readings
+        A-->>U: สถานะห้องและ readings ล่าสุด
+        U->>U: อัปเดต Beacon, Log และกราฟ
     end
 ```
 
@@ -106,7 +109,7 @@ sequenceDiagram
 
 ## 4. Decision Engine และ AI/ML Scope
 
-> ส่วนนี้พี่เป็นเจ้าของ ตัว L1–L2 ในโปรเจกต์ฝั่งเราเป็น **ต้นแบบอ้างอิงและ fallback ตอน API ล่ม** ใช้เป็นข้อเสนอให้พี่ว่าควรตรวจอะไรบ้าง
+> ส่วนนี้เป็นความรับผิดชอบของ backend seat: server ใช้ engine ร่วมกับ frontend และเพิ่ม L3 baseline; เมื่อ API ล่ม frontend ใช้ local engine เป็น fallback
 
 เราแบ่งเป็นระดับ เพื่อไม่ให้อ้างเกินสิ่งที่ทำจริง
 
@@ -114,7 +117,7 @@ sequenceDiagram
 |---|---|---|---|
 | L1 | **Rule-based**: ไม่มีคน และกระแส ≥ 7 A | ✅ | อธิบายได้ 100% |
 | L2 | **Statistical anomaly**: z-score เทียบประวัติของห้อง (≥ 5 ค่า, z > 2.5) | ✅ | ไม่ต้องฝึกโมเดล |
-| L3 | **Baseline ตามช่วงเวลา**: ค่าเฉลี่ยกระแสต่อห้องต่อชั่วโมงของวัน (EWMA) เพื่อแยก "ใช้ปกติ" ออกจาก "ผิดปกติ" | 🔲 | ใช้ข้อมูลที่สะสมใน DB |
+| L3 | **Baseline ตามช่วงเวลา**: EWMA แยกตามห้องและชั่วโมงของสัปดาห์ | ✅ | ประเมินจาก readings ใน SQLite; ประเมินเฉพาะข้อมูลปกติเพื่อไม่ให้ baseline เรียนรู้ค่าที่สิ้นเปลือง |
 | L4 | **ML (optional)**: Isolation Forest หรือโมเดลพยากรณ์โหลด | 🔲 | ทำเมื่อ L1–L3 เสร็จและมีข้อมูลพอ |
 
 **ข้อตกลงเรื่องความซื่อตรงของข้อมูล**
@@ -137,10 +140,10 @@ sequenceDiagram
 > พี่เป็นเจ้าของ ฝั่งเราเขียน API Contract + mock API เพื่อพัฒนา Dashboard ไปพร้อมกัน
 
 **อยู่ใน scope**
-- REST API + validation + บันทึกลง DB
-- เรียก Decision Engine ฝั่ง server (ใช้โค้ดเดียวกับ frontend)
-- ส่งผลให้ Dashboard: แบบง่ายคือ Dashboard เรียก `GET /api/rooms` ทุก 2 วินาที (polling) หรือแบบ real-time ด้วย SSE ตกลงกับพี่
-- Test: unit (engine) + integration (API) รันใน CI
+- REST API + validation + บันทึกลง SQLite ด้วย `node:sqlite` (ต้องใช้ Node.js ≥ 22.5; แสดง `ExperimentalWarning` ตอนรันเทสต์)
+- เรียก Decision Engine ฝั่ง server โดยใช้โค้ดเดียวกับ frontend
+- v1 ใช้ polling ผ่าน `GET /api/rooms` และ `GET /api/readings` ทุก 2 วินาที; SSE เป็น endpoint เสริมที่ต้องตกลงก่อนเพิ่ม
+- Unit tests ของ engine และ integration tests ของ API ต้องรันใน CI
 
 **ไม่อยู่ใน scope (ระยะแรก)**
 - ระบบล็อกอิน/สิทธิ์ผู้ใช้
@@ -166,7 +169,7 @@ erDiagram
     ROOM ||--o{ READING : has
     ROOM ||--o{ EVENT : has
     ROOM {
-        int id PK
+        string id PK
         string building
         string room_number
         string status
@@ -174,7 +177,7 @@ erDiagram
     }
     READING {
         int id PK
-        int room_id FK
+        string room_id FK
         real current
         real voltage
         bool motion
@@ -183,7 +186,7 @@ erDiagram
     }
     EVENT {
         int id PK
-        int room_id FK
+        string room_id FK
         string level
         string message
         int ts
@@ -201,7 +204,7 @@ erDiagram
 | ประวัติห้องน้อยกว่า 5 ค่า | ข้าม z-score ใช้ rule อย่างเดียว |
 | Component ฝั่ง UI เกิด error | Error Boundary แสดงปุ่ม RECOVER ✅ |
 | Storage ฝั่งเบราว์เซอร์เต็ม/ถูกบล็อก | ทำงานต่อในหน่วยความจำ ✅ |
-| Backend ไม่ตอบ 🔲 | Dashboard แสดงสถานะ OFFLINE และกลับไปโหมด Local |
+| API ไม่ตอบ ✅ | Dashboard แสดงสถานะ OFFLINE และกลับไปโหมด Local |
 
 ---
 
@@ -214,26 +217,57 @@ erDiagram
 
 ---
 
-## 8. Milestones
+## 8. Milestones และ Definition of Done (DoD)
 
-| M | งาน | ผลลัพธ์ที่ตรวจได้ |
+ใช้เอกสารนี้เป็นแหล่งอ้างอิงหลักเพียงฉบับเดียวสำหรับ architecture และ DoD สถานะ “ทำ implementation แล้ว” ไม่เท่ากับ “ส่งมอบแล้ว”: ต้องผ่าน DoD และมีผลตรวจสอบก่อนปิด milestone
+
+### สถานะย่อ
+
+| M | งาน | สถานะ |
 |---|---|---|
-| M0 ✅ | Frontend + Engine + Auto Simulation + CI | รันบน localhost ได้ |
-| M0.5 ✅ | ตกลง API Contract กับพี่ + nackjub ทำ mock API + สคริปต์จำลอง IoT (`npm run mock-api`, `npm run simulate`) | ทั้งสองฝั่งใช้สัญญาเดียวกัน |
-| M1 | (พี่) Backend Express + validation + SQLite + API ตาม contract | integration test ผ่านใน CI |
-| M2 | (nackjub) ต่อ Dashboard เข้ากับ API + SSE + fallback ออฟไลน์ | เห็นข้อมูลสดข้ามเครื่อง |
-| M3 | (พี่) L3 baseline ตามชั่วโมง + ชุดประเมินผล Precision/Recall | ตารางเปรียบเทียบ L1/L2/L3 |
-| M4 | (optional) L4 ML, Telegram alert, ESP32 ต้นแบบ | เดโมแยกต่างหาก |
-| M5 | รายงาน/พอร์ต + คลิปสาธิต | เอกสารส่งกรรมการ |
+| M0 ✅ | Frontend + Engine + Auto Simulation + CI | ส่งมอบแล้ว |
+| M0.5 ✅ | API Contract, mock API และสคริปต์จำลอง IoT | ส่งมอบแล้ว |
+| M1 | Backend Express + validation + SQLite + API | Implementation อยู่ใน branch; ยังไม่ merge หรือ deploy |
+| M2 | เชื่อม Dashboard กับ API และ fallback ออฟไลน์ (nackjub) | งานของ nackjub |
+| M3 | L3 baseline และชุดประเมินผล | Implementation และรายงานอยู่ใน branch; ยังไม่ merge |
+| M4 (ทางเลือก) | L4, Telegram alert, ESP32 | ยังไม่ทำ |
+| M5 | รายงาน/พอร์ตและคลิปสาธิต | ยังไม่ทำ |
+
+### M1 — Backend API
+
+**Definition of Done**
+
+- API จริงทำตาม `project/API_CONTRACT.md` และผ่าน `project/server/api.test.ts` โดยไม่แก้ acceptance test
+- Validation ปฏิเสธข้อมูลผิด บันทึกเหตุการณ์พร้อมเหตุผล และ API ยังทำงานต่อได้
+- SQL ใช้ prepared statements เท่านั้น; `readings` เป็น append-only และไม่มีเส้นทางแก้ไขหรือลบ
+- `npm ci`, typecheck, lint, test และ build ผ่านจาก `project/`; CI ของ branch ผ่านครบ
+- ไม่ commit `.env` หรือ `project/dist/`
+
+### M3 — L3 และการประเมินผล
+
+**Definition of Done**
+
+- L3 ใช้ EWMA แยกตามห้องและชั่วโมงของสัปดาห์ โดยไม่เรียนรู้จาก readings ที่ตรวจว่าเป็นการสิ้นเปลือง
+- `npm run evaluate` สร้างผลซ้ำได้จากข้อมูลสังเคราะห์ตามลำดับเวลา โดยไม่ใช้ข้อมูลอนาคต
+- รายงาน Precision, Recall, F1, ผลแยกประเภท และจำนวน readings ที่ L3 ประเมินหรือข้าม พร้อมระบุข้อจำกัดและสมมติฐาน
+
+ผลที่มีใน branch ปัจจุบัน (4 สัปดาห์, 6 ห้อง, 16,128 readings, seed 42): L1 ได้ Precision/Recall/F1 = 100.0%/53.5%/69.7%; L1+L2 = 90.1%/66.9%/76.8%; L1+L2+L3 = 90.5%/74.5%/81.7%. L3 ประเมิน 10,660 readings, ข้ามเพราะประวัติน้อย 5,444 readings และข้ามเพราะ baseline เรียบเกินไป 24 readings เลือก `BASELINE_K=6` จากการ sweep: Recall คงที่ 74.5% ระหว่าง k=3–6 ขณะที่ Precision เพิ่มจาก 75.2% เป็น 90.5%; ผลยังคงเหมาะสมบน seed 42, 7, 99 และ 2026 ดูรายงานเต็มที่ [EVALUATION.md](EVALUATION.md)
+
+### M2, M4 และ M5
+
+- **M2:** Dashboard อ่านข้อมูลจาก API จริง แสดง `OFFLINE` เมื่อ API ใช้งานไม่ได้ และกลับไป local mode ได้; ส่วนนี้เป็นงานของ nackjub
+- **M4:** เป็นทางเลือกและต้องตกลง scope ก่อนทำ หากไม่มี L4 ห้ามเรียกระบบว่า machine learning
+- **M5:** รายงานและคลิปต้องตรงกับพฤติกรรมที่ตรวจสอบได้ ระบุว่าข้อมูลเป็นข้อมูลสังเคราะห์ และระบุว่าตัวเลขค่าไฟ/คาร์บอน/ชั่วโมง idle เป็นข้อสมมติ
+
+### สถานะการตรวจสอบล่าสุด
+
+Implementation ของ M1/M3 อยู่ใน `docs/architecture-plan` และยังไม่ merge หรือ deploy รอบตรวจล่าสุดหยุดที่ `npm ci` ด้วย `EPERM` ขณะลบ `node_modules/@esbuild/win32-x64/esbuild.exe` จึงยังยืนยัน gate ล่าสุดไม่ได้ ห้ามระบุว่า CI หรือ DoD ผ่านจนกว่าจะมี output จริงยืนยัน
 
 ## 9. ประเด็นที่ต้องตัดสินใจ (Open Decisions)
 
-ถามพี่
-1. ยืนยันการแบ่งงานในหัวข้อ 1.1 และให้พี่ดู/แก้ API Contract ในหัวข้อ 5
-2. ให้ Dashboard ใช้ polling หรือ SSE
-3. Backend ใช้ Node.js + ฐานข้อมูลอะไร และ AI ของพี่ใช้วิธีอะไร (rule, สถิติ หรือ ML) เพื่อเขียนในรายงานให้ตรงกัน
-4. Deploy ที่ไหน (ฝั่งหน้าเว็บ เช่น Vercel/Netlify, ฝั่ง API ต้องเป็น HTTPS และเปิด CORS ให้โดเมนหน้าเว็บ)
-5. จะมีฮาร์ดแวร์จริง (ESP32) หรือใช้ตัวจำลองทั้งหมด
+1. ยืนยันการแบ่งงานและผู้รับผิดชอบตามหัวข้อ 1.1
+2. เลือกผู้ให้บริการ Deploy สำหรับ frontend และ API (API ต้องใช้ HTTPS และเปิด CORS ให้ origin ของเว็บ)
+3. จะใช้ฮาร์ดแวร์จริง (ESP32) หรือใช้ตัวจำลองทั้งหมด
 
 ## 10. ข้อจำกัด
 

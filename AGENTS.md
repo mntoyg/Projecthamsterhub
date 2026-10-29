@@ -1,14 +1,11 @@
 # Agent operating rules — K-SES / ProjectHamsterHub
 
-Read this and [`ARCHITECTURE.md`](ARCHITECTURE.md) before any analysis or change.
+Read [`project/ARCHITECTURE.md`](project/ARCHITECTURE.md) and this file before any analysis or change.
 
 Authority order, highest first:
 1. [`project/API_CONTRACT.md`](project/API_CONTRACT.md) — the interface agreed with nackjub
-2. [`project/ARCHITECTURE.md`](project/ARCHITECTURE.md) — the team's system architecture and
-   division of work, owned by the project lead
-3. [`ARCHITECTURE.md`](ARCHITECTURE.md) — our seat's design, subordinate to the two above
-4. this file
-
+2. [`project/ARCHITECTURE.md`](project/ARCHITECTURE.md) — the single team architecture and source for milestone status and DoD
+3. this file
 If our work needs the contract to change, change the contract first, by agreement. Never
 silently diverge from it.
 
@@ -96,7 +93,7 @@ never copy a `.env` across.
 - Work in small, self-contained, verifiable steps, one at a time.
 - **`project/server/api.test.ts` is the acceptance test for M1.** The real service must pass it
   unchanged, against the same contract the mock satisfies.
-- Nothing is done until the gate in `ARCHITECTURE.md` §3 passes. **Paste real output.** Never
+- Nothing is done until the gate in `project/ARCHITECTURE.md` §7 passes. **Paste real output.** Never
   describe a result you did not run.
 - **Never push to `main`.** Work on a branch (`feat/...`, `fix/...`, `docs/...`).
 - Commit after each completed step. Use the GitHub noreply address for `user.email`.
@@ -127,9 +124,9 @@ discovery probes the zero-byte Microsoft Store alias stubs under
 - รูปแบบ commit message ใช้คำนำหน้า Conventional Commits เป็นภาษาอังกฤษ แล้วตามด้วยคำอธิบายภาษาไทย
   เช่น `fix(docs): แก้ชื่อไดรเวอร์ SQLite ให้ตรงกับโค้ดจริง` เนื้อหาใน commit อธิบายเป็นภาษาไทย
 - เขียน comment และ JSDoc ในซอร์สเป็นภาษาไทย
-- เอกสารของที่นั่งนี้เป็นภาษาไทย: `README.md`, `AGENTS.md`, `ARCHITECTURE.md` ที่ราก,
+- เอกสารของที่นั่งนี้เป็นภาษาไทย: `README.md`, `AGENTS.md`, `project/ARCHITECTURE.md`,
   `DEPLOY.md`, `project/README.md` และ `project/EVALUATION.md`
-- คง `project/API_CONTRACT.md` และ `project/ARCHITECTURE.md` ไว้ตามเดิม ห้ามแปลหรือแก้
+- คง `project/API_CONTRACT.md` ไว้ตามเดิม ห้ามแปลหรือแก้
   เว้นแต่มีการตกลงเปลี่ยนสัญญาหรือเนื้อหาร่วมกันก่อน
 - คง identifier ทุกชนิด ชื่อไฟล์ ชื่อ branch ชื่อ npm script ชื่อตัวแปรสภาพแวดล้อม
   (`CORS_ORIGINS`, `VITE_API_URL`, `DB_FILE`, `BASELINE_K`, `MAX_BODY_BYTES`,

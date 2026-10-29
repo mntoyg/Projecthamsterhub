@@ -57,7 +57,7 @@ Railway และ Fly.io ใช้ Dockerfile เดียวกัน ขั้
 | `PORT` | `8787` | ใช้ค่าที่โฮสต์กำหนดให้ หากโฮสต์ส่งตัวแปรนี้มา |
 | `DB_FILE` | `/data/k-ses.db` | `/data` เป็น volume ภายใน image |
 | `CORS_ORIGINS` | *(ว่าง)* | allow-list คั่นด้วยจุลภาค ค่าว่างยอมรับทุก origin และแสดงคำเตือนเมื่อเริ่มทำงาน |
-| `BASELINE_K` | `6` | ความไวของ L3 ดู `ARCHITECTURE.md` §2.5 |
+| `BASELINE_K` | `6` | ความไวของ L3 ดู `project/ARCHITECTURE.md` §8 |
 | `MAX_BODY_BYTES` | `10000` | ขีดจำกัด body 10 KB ตามสัญญา |
 | `READINGS_MAX_LIMIT` | `500` | จำนวน readings สูงสุด |
 
