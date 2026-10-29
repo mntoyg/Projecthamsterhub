@@ -137,6 +137,25 @@ These are facts read from the repository, each to be closed by a step in §2.9.
   delete every row, including `clearLogs()`'s unbounded `DELETE ... WHERE created_at >= epoch`.
   The migration headers describe this as intentional for a no-sign-in shared dashboard. It is
   still an unauthenticated public write surface and the proposed design removes it.
+
+  **Escalated 2026-10-29.** The anon key is not merely embeddable, it is already published:
+  `project/dist/assets/index-DRT4vokJ.js` is committed to `main` (`2515610`) and carries the
+  live project URL `https://ycunhpuedmrulggdxkvb.supabase.co` together with an anon JWT
+  (`role: anon`, `exp` 2108756967 ≈ 2036), and the GitHub repository is public. Combined with
+  the permissive grants, that token is in practice an unauthenticated write credential for the
+  live database. Removing `dist/` from the index (IMPL-0) does not remove it from history.
+
+  Partially closed by `project/supabase/migrations/20261029093000_tighten_rls_anon_read_only.sql`,
+  which revokes `INSERT`, `UPDATE` and `DELETE` from `anon` and `authenticated`, drops the write
+  policies, and revokes the schema default privileges that would re-grant them on a future table.
+  **That migration does not end the exposure by itself:** the leaked token stays valid until the
+  anon key and JWT secret are rotated in the Supabase dashboard, and the existing rows need an
+  audit for third-party writes. Both are operator actions, tracked as IMPL-0a below.
+
+  Checked while writing that migration: the published bundle has `isSupabaseConfigured` inlined
+  to `false` (`const ym=!1`) and contains no table-name string, Vite having eliminated every
+  query path, so the deployed frontend performs no Supabase read or write and the migration does
+  not break it.
 - **D2 — OWASP A09, logging/monitoring failure.** `sonar-project.properties` sets
   `sonar.javascript.lcov.reportPaths=coverage/lcov.info`, but `package.json` has no coverage
   script and `@vitest/coverage-*` is not a dependency. Sonar therefore reports coverage over an
@@ -166,6 +185,8 @@ These are facts read from the repository, each to be closed by a step in §2.9.
 | ADR-4 | Postgres stays **Supabase**; the browser keeps Realtime for reads | No reason to move the database; Realtime already works and is read-only under the new policies. |
 | ADR-5 | **All writes move server-side.** `anon` is reduced to `SELECT`. Ingest is authenticated with a device token. | Closes D1. |
 | ADR-6 | Docs and agent files live at the **nested git root** `Projecthamsterhub/` | That is the real repo root; files one level up would not be tracked or pushed. |
+| ADR-7 | Migration files keep the repository's existing `YYYYMMDDHHMMSS_description.sql` convention. The `000n_` labels in §2.6 and §2.9 name the *step*, not the filename. | The two existing migrations are timestamped; a second scheme in the same directory would make the apply order ambiguous. |
+| ADR-8 | **RLS tightening ships first, standalone, against the current tables** — `20261029093000_tighten_rls_anon_read_only.sql` — instead of waiting for the normalised schema as `0009` | D1 is live on a public repository with a published anon token. A security fix does not queue behind seven schema migrations. The later `0009` step now only extends the same policy shape to the new tables. |
 
 ### 2.2 Target topology
 
@@ -365,7 +386,12 @@ Migration order (reversible, one concern each):
 `0003_reference_tables` -> `0004_readings_append_only` -> `0005_anomalies_insights` ->
 `0006_event_log` -> `0007_backfill_from_legacy` -> `0008_compat_views_and_rename` ->
 `0009_tighten_rls`. Each file has a `-- DOWN` section. `0007` is verified by row-count and
-checksum comparison against the legacy tables before `0008` runs.
+checksum comparison against the legacy tables before `0008` runs. These are step names, not
+filenames (ADR-7).
+
+The `0009` policy shape already exists for the current tables:
+`20261029093000_tighten_rls_anon_read_only.sql` applied it ahead of the rest (ADR-8), so the
+`0009` step reduces to extending the same revokes and SELECT-only policies to the new tables.
 
 ### 2.7 Configuration and secrets — OWASP A02
 
@@ -431,7 +457,8 @@ No step below is started by this task.
 
 | Step | Deliverable | Done when |
 | --- | --- | --- |
-| IMPL-0 | `.gitignore` at the git root; `project/dist/` removed from the index | `git status` clean after `npm install`; closes D3 |
+| IMPL-0 | `.gitignore` at the git root; `project/dist/` removed from the index | `git status` clean after `npm install`; closes D3 — **done**, `19ba2ff` |
+| IMPL-0a | **Operator actions on the D1 exposure, not code.** Apply `20261029093000_tighten_rls_anon_read_only.sql`; rotate the anon key and JWT secret in the Supabase dashboard; audit `rooms`, `logs` and `energy_readings` for third-party writes; decide on repository visibility and on purging `dist/` from history | the verification block in that migration passes, including the negative test that must return 401/403 where it previously returned 201; the old token is rejected after rotation |
 | IMPL-1 | `backend/` skeleton: `pyproject.toml`, `Settings`, `errors.py`, `/healthz`, `/readyz`, structured logging | gate block §3.2 passes with a trivial test |
 | IMPL-2 | Migrations `0003`–`0006` with `-- DOWN`, applied to a scratch Supabase project | DDL check plus a reversibility test |
 | IMPL-3 | `store/` repositories + `0007` backfill | row-count and checksum parity against `*_legacy` |
