@@ -67,13 +67,15 @@ over SQLite. Treat Supabase as legacy.
 
 | # | Decision | Why |
 | --- | --- | --- |
-| D-1 | **Node.js + Express + SQLite** (`better-sqlite3`), TypeScript, run with `tsx` | Set by the team architecture §2 and §5. It also lets the server `import` the frontend's `engine/energy.ts` directly — no second implementation of the rule to drift. |
+| D-1 | **Node.js + Express + SQLite** (`node:sqlite`), TypeScript, run with `tsx` | Set by the team architecture §2 and §5. It also lets the server `import` the frontend's `engine/energy.ts` directly — no second implementation of the rule to drift. |
 | D-2 | **Polling, not SSE, for v1.** `GET /api/rooms` + `GET /api/readings` every 2 s, as the dashboard already does | The client side is built and working. SSE is an additive endpoint (`GET /api/events`) once M1 is green; it is open decision #2 in the team doc. |
 | D-3 | **No LLM anywhere.** The "AI" is L1 rule → L2 z-score → L3 EWMA baseline → L4 optional Isolation Forest | Team architecture §4. It also keeps the honesty rule there: with no L4, we call it *rule-based + statistical anomaly detection*, never "machine learning". |
 | D-4 | **`project/server/api.test.ts` is the acceptance test.** The real service replaces `mock-api.ts` behind the same tests | Removes argument about whether M1 is done. The test either passes or it does not. |
 | D-5 | Supersedes the earlier proposal in this file (Python + FastAPI, OpenAI insight layer, normalised Supabase schema). None of it is built | The team had already decided Node + Express + SQLite. A second stack in one repo, and an LLM nobody asked for, is cost with no milestone behind it. |
 
 ### 2.2 Module boundaries
+
+The server uses the built-in `node:sqlite` module and requires Node.js ≥ 22.5. This API is experimental and emits `ExperimentalWarning` during tests.
 
 ```
 project/server/
@@ -94,7 +96,7 @@ project/server/
 | --- | --- |
 | `routes/*` | contain business rules or touch SQL |
 | `validate.ts` | write to the database or log user values verbatim |
-| `store.ts` | leak a `better-sqlite3` exception past its own boundary |
+| `store.ts` | leak a `node:sqlite` exception past its own boundary |
 | `analyze.ts` | perform I/O other than through `store.ts`, or return localised prose — it returns reason **codes** plus the Thai string the contract already specifies |
 
 Thresholds, limits and assumptions are **configuration with the current values as defaults**, not
@@ -205,11 +207,13 @@ Per §6 of the team document, and this is a graded requirement, not a nicety:
 
 ### 2.7 Security — OWASP, for this stack
 
+`node:sqlite` ships with Node.js; version 22.5 or newer is required. It remains experimental and emits `ExperimentalWarning` during tests.
+
 | OWASP | Obligation here |
 | --- | --- |
 | A01 | The API is unauthenticated by design (team doc §5: no login in phase 1). That makes input validation and the absence of any destructive endpoint the control: there is no `DELETE` route, and `readings` has no update or delete path. |
 | A02 | Secrets only from the environment or `project/.env`, which is git-ignored. `project/.env.example` carries placeholders. Never log a secret or echo one in an error. |
-| A03 | **Prepared statements only** via `better-sqlite3`; never a template-built SQL string. No `child_process` with a shell; if a subprocess is ever needed, argument array form. Never `eval`. |
+| A03 | **Prepared statements only** via `node:sqlite`; never a template-built SQL string. No `child_process` with a shell; if a subprocess is ever needed, argument array form. Never `eval`. |
 | A04 | The tool reports; it never controls hardware. No endpoint actuates anything. |
 | A05 | `CORS_ORIGINS` is an explicit allow-list, never `*`, once deployed. Body size capped. No security control is weakened to make a test pass. |
 | A06 | Dependency floors pinned in `package.json`. `npm audit` findings are reviewed, not ignored — the current tree reports 14 (9 high) and that is tracked, not accepted silently. |

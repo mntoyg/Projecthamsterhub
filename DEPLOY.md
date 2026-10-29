@@ -1,4 +1,6 @@
-# Deploying K-SES
+ข้อกำหนด Node.js: ต้องใช้ Node.js ≥ 22.5 เพราะ API ใช้ node:sqlite ที่มากับ Node.js รุ่นนี้ โมดูลยังเป็น Experimental และแสดง ExperimentalWarning ตอนรันเทสต์.
+
+Deploying K-SES
 
 Two things ship separately:
 

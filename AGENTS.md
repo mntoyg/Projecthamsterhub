@@ -46,7 +46,7 @@ A test that can only pass by editing a UI file is not a passing test.
 | --- | --- |
 | A01 | The API is unauthenticated by design in phase 1, so validation is the control. There is no destructive endpoint: no `DELETE` route, and `readings` has no update or delete path in `store.ts`. Never add one "for testing". |
 | A02 | Secrets only from the environment or `project/.env`, which is git-ignored. `project/.env.example` holds placeholders. A secret never appears in a log, an error, an HTTP response, a commit or a PR body. **Never commit `.env`. Never commit `dist/`.** |
-| A03 | Prepared statements only (`better-sqlite3`); never a template-built SQL string. No `child_process` with a shell — argument-array form only, never an interpolated command string. Never `eval` or `new Function` on anything that came in over the wire. |
+| A03 | Prepared statements only (`node:sqlite`); never a template-built SQL string. No `child_process` with a shell — argument-array form only, never an interpolated command string. Never `eval` or `new Function` on anything that came in over the wire. |
 | A04 | The system reports; it never controls hardware. No endpoint actuates anything, and none may be added without agreement in `project/ARCHITECTURE.md`. |
 | A05 | `CORS_ORIGINS` is an explicit allow-list, never `*`, once deployed. Body capped at 10 KB per the contract. Never weaken a control to make a test pass. |
 | A06 | Dependency floors pinned in `package.json`. `npm audit` findings are reviewed and reported, not ignored. |
@@ -75,7 +75,7 @@ never copy a `.env` across.
 - **One definition of the rule.** The server imports `project/src/engine/energy.ts`. Never
   reimplement the threshold or the z-score server-side — two copies drift and the report then
   cites a number the code does not use.
-- **Translate third-party exceptions at the module boundary.** A `better-sqlite3` or `express`
+- **Translate third-party exceptions at the module boundary.** A `node:sqlite` or `express`
   error never escapes its module; every boundary throws an `AppError` subclass.
 - **Never infer success from a status code alone.** Inspect the payload.
 - **Never return an empty result to mask a failure.**
