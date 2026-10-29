@@ -1,16 +1,35 @@
 # KMITL Smart Grid & AI Energy Guardian
 
-Single-page control-room dashboard: simulated IoT sensors (current, voltage, occupancy) -> decision engine -> live red/green alerts.
+Dashboard แบบห้อง Control Room: จำลองบอร์ด IoT (กระแส, แรงดัน, มีคนอยู่หรือไม่) → วิเคราะห์ Energy Waste → ไฟแดง/เขียวแบบ real-time
 
-## Run
-    npm install
-    npm run dev      # local mode, no backend
-    npm test         # decision-engine unit tests
+## รัน (ต้องมี Node.js 18+)
+```
+npm install
+npm run dev          # http://localhost:5173  (โหมด Local ไม่ต้องมี backend)
+```
 
-## Decision engine (`src/engine/energy.ts`)
-- Rule: no occupancy AND current >= 7 A => Energy Waste
-- Statistical: z-score of the reading vs. the room's recent history (needs >= 5 samples)
-- Savings: P = V x I; kWh/month, baht and kg CO2 use documented assumptions (tariff 4.2 THB/kWh, 0.5 kgCO2/kWh, 14 idle h x 22 days)
+## รันแบบมี API (mock)
+เปิด 3 เทอร์มินัล
+```
+npm run mock-api                 # API จำลอง http://localhost:8787
+npm run simulate -- after        # สคริปต์จำลองบอร์ด IoT (หรือ: class)
+VITE_API_URL=http://localhost:8787 npm run dev
+```
+(Windows PowerShell: `$env:VITE_API_URL="http://localhost:8787"; npm run dev` หรือสร้างไฟล์ `.env` ตาม `.env.example`)
 
-## Limitations
-Sensors are simulated; assumptions above are approximations, not measured campus data.
+## ใช้ API จริงของพี่
+ตั้ง `VITE_API_URL` เป็น URL ของ API ตามสัญญาใน [API_CONTRACT.md](API_CONTRACT.md) แล้ว `npm run build`
+
+## Deploy
+`npm run build` → โฟลเดอร์ `dist/` อัปขึ้น Vercel / Netlify / GitHub Pages ได้
+- ตั้ง `VITE_API_URL` ตอน build (เว็บ HTTPS เรียก API แบบ HTTP ไม่ได้)
+- API ต้องเปิด CORS ให้โดเมนของเว็บ
+
+## ทดสอบ
+`npm test` (ตัวตัดสินใจ + API 20 เทส) · `npm run lint` · CI อยู่ที่ `.github/workflows/ci.yml`
+
+## เอกสาร
+[ARCHITECTURE.md](ARCHITECTURE.md) · [API_CONTRACT.md](API_CONTRACT.md)
+
+## ข้อจำกัด
+เซนเซอร์เป็นการจำลอง ตัวเลขค่าไฟและคาร์บอนอิงข้อสมมติ (4.2 บาท/หน่วย, 0.5 kgCO₂/kWh, ว่าง 14 ชม. × 22 วัน) ใน `src/engine/energy.ts`

@@ -1,4 +1,5 @@
 import { isSupabaseConfigured } from '../lib/supabase';
+import { API_URL } from '../lib/config';
 import { Radio, Cpu, Wifi, CloudOff, Cloud, Loader2 } from 'lucide-react';
 
 interface Props {
@@ -13,7 +14,7 @@ export default function Header({ connectionState = 'online' }: Props) {
   } as const;
   const conn = connMap[connectionState];
   const ConnIcon = conn.icon;
-  const isLocal = !isSupabaseConfigured;
+  const isLocal = !isSupabaseConfigured && !API_URL;
   return (
     <header className="relative overflow-hidden border-b border-kmitl-orange/20 bg-charcoal-900/80 backdrop-blur">
       <div className="absolute inset-0 card-grid-bg opacity-40" />
@@ -50,7 +51,7 @@ export default function Header({ connectionState = 'online' }: Props) {
           </div>
           <div className={`flex items-center gap-1.5 ${conn.color}`}>
             <ConnIcon className={`h-3.5 w-3.5 ${connectionState === 'connecting' ? 'animate-spin' : ''}`} />
-            <span className="font-mono">{isLocal ? 'MODE: LOCAL' : `DB: ${conn.label}`}</span>
+            <span className="font-mono">{isLocal ? 'MODE: LOCAL' : `${API_URL ? 'API' : 'DB'}: ${conn.label}`}</span>
           </div>
         </div>
       </div>
