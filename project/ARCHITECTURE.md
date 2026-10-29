@@ -227,9 +227,9 @@ erDiagram
 |---|---|---|
 | M0 ✅ | Frontend + Engine + Auto Simulation + CI | ส่งมอบแล้ว |
 | M0.5 ✅ | API Contract, mock API และสคริปต์จำลอง IoT | ส่งมอบแล้ว |
-| M1 | Backend Express + validation + SQLite + API | โค้ดอยู่ใน upstream/main และ fork/main ที่ `d98a163`; CI ผ่าน ยังไม่ได้ deploy และยังมีประเด็นชื่อ acceptance test ที่ต้องแยกให้ชัด |
+| M1 | Backend Express + validation + SQLite + API | Acceptance/integration และ local gate ผ่านจาก `c1c7a89`; DoD ยังไม่ครบจนกว่า CI ของ commit ที่ส่งขึ้น branch จะผ่าน; ยังไม่ deploy |
 | M2 | เชื่อม Dashboard กับ API และ fallback ออฟไลน์ (nackjub) | งานของ nackjub |
-| M3 | L3 baseline และชุดประเมินผล | โค้ดและรายงานอยู่ใน upstream/main และ fork/main; รัน evaluation ซ้ำได้จากสำเนาตรวจสอบ |
+| M3 ✅ | L3 baseline และชุดประเมินผล | ผ่าน DoD ใน local verification จาก commit `c1c7a89`; ทดสอบรายงานซ้ำและ replay ตามเวลาแล้ว |
 | M4 (ทางเลือก) | L4, Telegram alert, ESP32 | ยังไม่ทำ |
 | M5 | รายงาน/พอร์ตและคลิปสาธิต | ยังไม่ทำ |
 
@@ -237,10 +237,10 @@ erDiagram
 
 **Definition of Done**
 
-- API จริงทำตาม `project/API_CONTRACT.md` และผ่าน `project/server/api.test.ts` โดยไม่แก้ acceptance test
-- Validation ปฏิเสธข้อมูลผิด บันทึกเหตุการณ์พร้อมเหตุผล และ API ยังทำงานต่อได้
+- API จริงทำตาม `project/API_CONTRACT.md`; `project/server/api.test.ts` เรียก contract suite เดียวกันกับทั้ง Express จริงและ mock โดยไม่แก้ `project/API_CONTRACT.md`
+- Validation ปฏิเสธข้อมูลผิด บันทึก event พร้อมเหตุผลใน SQLite และ API ยังทำงานต่อได้; `app.test.ts` ตรวจเหตุผลในตาราง `events` และยืนยันว่าไม่มี reading ผิดถูกบันทึก
 - SQL ใช้ prepared statements เท่านั้น; `readings` เป็น append-only และไม่มีเส้นทางแก้ไขหรือลบ
-- `npm ci`, typecheck, lint, test และ build ผ่านจาก `project/`; CI ของ branch ผ่านครบ
+- `npm ci`, typecheck, lint, test และ build ผ่านจาก clean verification copy ที่สร้างจาก commit ที่ตรวจ; สถานะ CI ของ commit นี้ยังไม่ได้ตรวจ
 - ไม่ commit `.env` หรือ `project/dist/`
 
 ### M3 — L3 และการประเมินผล
@@ -261,15 +261,18 @@ erDiagram
 
 ### สถานะการตรวจสอบล่าสุด — 2026-10-29
 
-`HEAD` คือ `d98a1635fc9d70f30a29fa23749e4a8eeb32a842` และตรงกับ `main` ของทั้ง upstream และ fork
+โค้ด `server/` และ `scripts/` ที่ตรวจอยู่ที่ commit `c1c7a8949c02edd8ea6d0fc75ce9b6c11caabeda` บน branch `docs/demo-plan`; ยังไม่ได้ push และไม่ได้ deploy
 
-- GitHub Actions `build` ของทั้งสอง repository ผ่านครบ: `npm ci`, typecheck, lint, test และ build
-- รัน gate ในสำเนาชั่วคราวที่สร้างจาก commit นี้: `npm ci`, typecheck, lint, test (5 files / 57 tests) และ build ผ่าน สำเนานี้แยกจาก working tree และไม่มี `.env`, ฐานข้อมูล หรือ `dist`; npm 12 แจ้งว่าไม่ได้รัน esbuild postinstall ตาม allow-scripts แต่ Vite build ผ่านจริง
-- รัน `npm run evaluate` จากสำเนาเดียวกัน: seed 42 ให้ผลตรงกับรายงานและทำซ้ำได้ (SHA-256 ของรายงานตรงกันสองครั้ง); seeds 7, 99 และ 2026 ก็สร้างผลได้ รายงาน `project/EVALUATION.md` ใน working tree ไม่ถูกเขียนทับ
-- `project/server/app.test.ts` ทดสอบ Express API จริงกับ SQLite ในหน่วยความจำและผ่านใน test suite ส่วน `project/server/api.test.ts` เรียก `createMockApi` จึงเป็น test ของ mock ไม่ใช่ API จริง ตามถ้อยคำใน AGENTS.md ที่ระบุให้ `api.test.ts` เป็น acceptance test ของบริการจริง ประเด็นนี้ยังไม่ตรงกันและต้องแก้ความเข้าใจของ acceptance test ก่อนปิด M1 อย่างเป็นทางการ
-- Backend in-process smoke ในสำเนาชั่วคราวใช้ `DB_FILE=:memory:` ผ่านครบ: health 200, seeded rooms 6 ห้อง, POST telemetry 200 พร้อมผล `Energy Waste`, GET readings พบข้อมูลที่บันทึก, invalid telemetry 400 และ health ยัง 200; CORS origin ที่อนุญาตมี header ตรงค่า ส่วน origin ที่ไม่อนุญาตไม่มี `Access-Control-Allow-Origin`; `/api/events` ตอบ 404 ตาม contract ปัจจุบัน
-- `npm ci` ใน `project/` เดิมยังติด `EPERM` ขณะจัดการ esbuild; ไม่ได้ลบหรือแทนที่ `node_modules` เดิม การทดสอบ TCP จาก process แยกถูก sandbox ปฏิเสธ แต่ in-process smoke และ test suite ผ่านแล้ว
-- ยังไม่มีการ deploy ผลตรวจข้างต้นยืนยัน CI, build, integration tests และ evaluation เท่านั้น ไม่ยืนยันบริการที่โฮสต์จริง
+- สร้าง clean verification copy จาก commit นี้โดยไม่มี `node_modules`, `.env` หรือ `dist` ก่อนติดตั้ง; `npm ci` ผ่าน เพิ่ม 372 packages และ audit แจ้ง 14 vulnerabilities (1 low, 4 moderate, 9 high)
+- จากสำเนานี้ `npm run typecheck`, `npm run lint`, `npm test` และ `npm run build` ผ่านตามลำดับ; Vitest รายงาน 5 test files / 71 tests ผ่าน และ Vite สร้าง production bundle 1,646 modules ได้
+- npm 12 แจ้งว่า postinstall ของ `esbuild@0.28.2` ถูกบล็อกตาม `allowScripts`; แม้เช่นนั้น typecheck, tests และ production build ข้างต้นผ่านจริงโดยไม่ได้อนุมัติ install script เพิ่ม
+- `$env:EVAL_SEED='42'; npm run evaluate` สร้างรายงาน seed 42 / 28 วัน / 6 ห้อง / 16,128 readings; metrics L1 = 100.0%/53.5%/69.7%, L1+L2 = 90.1%/66.9%/76.8%, L1+L2+L3 = 90.5%/74.5%/81.7%; TP/FP/FN/TN = 822/86/282/14,938; L3 ตัดสิน 10,660, ข้ามเพราะข้อมูลน้อย 5,444 และ baseline เรียบเกินไป 24 readings ผลตรงกับรายงานที่ติดตามใน repo โดยเขียนรายงานที่สร้างลงใน verification copy เท่านั้น
+- `api.test.ts` ใช้ HTTP contract suite เดียวกันทดสอบ Express จริงบน SQLite ในหน่วยความจำและ mock; เพิ่มการตรวจว่า invalid telemetry ถูกเขียนลง `events` พร้อมเหตุผล และไม่มี reading ผิดถูกบันทึก ผลรวมอยู่ใน test suite ที่ผ่านข้างต้น
+- `evaluate.test.ts` รันทดสอบ CLI ซ้ำด้วย seed เดิมและเทียบผลรายงาน พร้อมตรวจว่า replay ของข้อมูลตามลำดับเวลาในช่วงต้นตรงกับการประเมิน prefix เดียวกัน จึงตรวจ causal behavior โดยไม่ใช้ข้อมูลอนาคต
+- `project/node_modules` เดิมใน working tree ไม่ถูกลบหรือแทนที่; การติดตั้งและ build เกิดใน clean verification copy แยกต่างหาก
+- CI ของ GitHub สำหรับ commit ใหม่นี้ยังไม่ได้ตรวจ และไม่มีการ deploy; ผลนี้ยืนยัน local gate, integration tests และ evaluation เท่านั้น
+- contract ปัจจุบันไม่มี route สำหรับ logs/events: ตาราง `events` เป็น event ภายใน backend และ `/api/events` ตอบ 404; อย่าแสดงตารางนี้เป็น feed ที่ UI เรียกได้โดยไม่ตกลงเปลี่ยน contract ก่อน
+- ประเด็นส่งต่อให้เจ้าของ UI ก่อนเดโม: `upsertRoom` มี local fallback เมื่อ network/5xx ล้มเหลว ขณะที่ flow ส่ง telemetry แสดง toast สำเร็จและสถานะ online ได้ ควรแสดง `LOCAL/OFFLINE` หรือ error เมื่อ backend ไม่รับข้อมูล; ไม่แก้ไฟล์ UI ในงาน backend นี้
 
 ## 9. ประเด็นที่ต้องตัดสินใจ (Open Decisions)
 
@@ -283,6 +286,38 @@ erDiagram
 - เกณฑ์ 7 A เป็นค่าตั้งต้น ควรปรับตามขนาดห้องและอุปกรณ์จริง
 
 ## 11. Deploy
+
+### เส้นทางเดโมในเครื่อง: API จริงและตัวจำลอง
+
+เปิดสาม PowerShell terminals ที่โฟลเดอร์ `project/`:
+
+1. Terminal API — ใช้ SQLite ในหน่วยความจำเพื่อไม่เขียนทับฐานข้อมูลเดิม:
+
+   ```powershell
+   $env:DB_FILE=':memory:'
+   $env:PORT='8787'
+   $env:CORS_ORIGINS='http://localhost:5173'
+   npm run server
+   ```
+
+2. Terminal ตัวจำลอง — รอให้ API แสดงว่า listening ก่อน แล้วส่ง telemetry ฉาก energy waste:
+
+   ```powershell
+   $env:API_URL='http://localhost:8787'
+   npm run simulate -- after
+   ```
+
+3. Terminal เว็บ — ให้ Vite ส่ง request ไปยัง API จริง:
+
+   ```powershell
+   $env:VITE_API_URL='http://localhost:8787'
+   npm run dev
+   ```
+
+ตรวจ API ได้ด้วย `Invoke-RestMethod http://localhost:8787/api/health` และ `Invoke-RestMethod http://localhost:8787/api/rooms`; หยุด API และตัวจำลองด้วย Ctrl+C เมื่อจบ การใช้ `:memory:` หมายถึงข้อมูลจะอยู่ตลอดอายุ process เท่านั้น
+
+- ข้อจำกัดสำหรับ UI demo: จนกว่าจะปรับ flow ของ frontend ตาม handoff ด้านบน การแจ้ง success อาจไม่ยืนยันว่า API รับ telemetry แล้ว หากต้องการหลักฐานการรับข้อมูลให้ดู status/response จาก API หรือ output ของตัวจำลองประกอบ
+- ไม่มี backend logs/events endpoint ใน contract ปัจจุบัน; log ที่เห็นใน terminal เป็น stdout ของ process และ event validation อยู่ใน SQLite ภายในเท่านั้น
 
 - Frontend: `npm run build` แล้วอัปโฟลเดอร์ `dist/` ขึ้น Vercel/Netlify/GitHub Pages
 - ตั้ง `VITE_API_URL` ตอน build ชี้ไปที่ API จริง (ต้อง HTTPS ถ้าเว็บเป็น HTTPS)
