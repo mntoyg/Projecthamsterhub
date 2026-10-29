@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
+import { API_URL } from './config';
 import { INITIAL_ROOMS, evaluateStatus } from '../data/rooms';
 import type { Room, LogEntry, SimulationPayload, EnergyReading } from '../types';
 
@@ -45,7 +46,30 @@ function rowToRoom(r: RoomRow): Room {
   };
 }
 
+class ApiRejected extends Error {}
+
+async function http<T>(path: string, init?: RequestInit): Promise<T> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (res.status >= 400 && res.status < 500) {
+      const b = (await res.json().catch(() => ({}))) as { errors?: string[] };
+      throw new ApiRejected((b.errors ?? [res.statusText]).join(' · '));
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function fetchRooms(): Promise<Room[]> {
+  if (API_URL) return (await http<{ rooms: Room[] }>('/api/rooms')).rooms;
   if (!isSupabaseConfigured) return INITIAL_ROOMS;
   const { data, error } = await supabase
     .from('rooms')
@@ -60,6 +84,19 @@ export async function upsertRoom(payload: SimulationPayload): Promise<Room> {
   const id = `${payload.building}-${payload.roomNumber}`.toLowerCase().replace(/\s+/g, '-');
   const status = evaluateStatus(payload.current, payload.motion);
   const power = (payload.current * payload.voltage) / 1000;
+
+  if (API_URL) {
+    try {
+      const res = await http<{ room: Room; reasons: string[] }>('/api/telemetry', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      return { ...res.room, reasons: res.reasons };
+    } catch (e) {
+      if (e instanceof ApiRejected) throw e;
+      // Network failure: fall through to local evaluation so the dashboard keeps working
+    }
+  }
 
   if (!isSupabaseConfigured) {
     return {
@@ -160,6 +197,7 @@ export async function clearLogs(): Promise<void> {
 }
 
 export async function fetchEnergyReadings(limit = 30): Promise<EnergyReading[]> {
+  if (API_URL) return (await http<{ readings: EnergyReading[] }>(`/api/readings?limit=${limit}`)).readings;
   if (!isSupabaseConfigured) return [];
   const { data, error } = await supabase
     .from('energy_readings')

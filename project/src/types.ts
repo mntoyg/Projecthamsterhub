@@ -9,6 +9,7 @@ export interface Room {
   status: RoomStatus;
   lastUpdated: number;
   zone: string;
+  reasons?: string[];
 }
 
 export type LogLevel = 'success' | 'error' | 'info' | 'warn';

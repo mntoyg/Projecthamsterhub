@@ -67,16 +67,10 @@ data/interim/
 *.parquet
 *.feather
 
-# --- UI layer: READ-ONLY and OUT OF SCOPE (AGENTS.md §1) ---
-# Listed so no agent edits them. Read them only when a backend contract depends on
-# what they query; nothing here may be modified.
-project/src/components/
-project/src/App.tsx
-project/src/main.tsx
-project/src/index.css
-project/index.html
-project/tailwind.config.js
-project/postcss.config.js
+# --- UI layer ---
+# Deliberately NOT ignored. The backend seat must be able to read App.tsx and the
+# components to see what the dashboard polls and expects. "Read, never edit" is a
+# scope rule, enforced in AGENTS.md §1, not by hiding the files from the agent.
 
 # --- Media and binaries ---
 *.png

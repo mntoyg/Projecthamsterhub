@@ -1,128 +1,131 @@
-# Agent operating rules — ProjectHamsterHub / K-SES
+# Agent operating rules — K-SES / ProjectHamsterHub
 
-This project is worked on by AI agents (Claude, CodeX, and any implementer seat). Reading this
-file and [`ARCHITECTURE.md`](ARCHITECTURE.md) is mandatory before any analysis or modification.
+Read this and [`ARCHITECTURE.md`](ARCHITECTURE.md) before any analysis or change.
+
+Authority order, highest first:
+1. [`project/API_CONTRACT.md`](project/API_CONTRACT.md) — the interface agreed with nackjub
+2. [`project/ARCHITECTURE.md`](project/ARCHITECTURE.md) — the team's system architecture and
+   division of work, owned by the project lead
+3. [`ARCHITECTURE.md`](ARCHITECTURE.md) — our seat's design, subordinate to the two above
+4. this file
+
+If our work needs the contract to change, change the contract first, by agreement. Never
+silently diverge from it.
 
 The git root is `Projecthamsterhub/` — one level below the folder named `ProjectHamsterHub`.
-Every path in this file is relative to that git root.
+Every path below is relative to that git root.
 
-## 1. Scope boundaries
+## 1. Scope
 
-**In scope: backend and AI/ML only.**
+**We are the "พี่" seat: Backend API + Database + AI analysis.** Our milestones are M1 (Express
++ validation + SQLite + the API per contract, integration tests green in CI) and M3 (L3
+hour-of-week baseline + a Precision/Recall/F1 evaluation).
 
-- `backend/**` — the FastAPI service (does not exist yet; see `ARCHITECTURE.md` §2.9)
-- `project/supabase/migrations/**` — schema
-- `project/src/engine/**`, `project/src/lib/**`, `project/src/types.ts` — data and decision
-  layers, changeable only when `ARCHITECTURE.md` says so
+In scope:
+- `project/server/**` — the service
+- `project/scripts/**` — the simulator and any data/evaluation tooling
+- `project/src/engine/**` — the shared decision engine, imported by both sides
+- `project/src/lib/api.ts`, `project/src/types.ts` — only when the contract changes
 - documentation at the git root
 
-**Out of scope, READ-ONLY — do not edit these files for any reason:**
-
-- `project/src/components/**` (all 10 components)
+**Out of scope, read-only — do not edit:**
+- `project/src/components/**`
 - `project/src/App.tsx`, `project/src/main.tsx`
 - `project/index.html`, `project/src/index.css`
 - `project/tailwind.config.js`, `project/postcss.config.js`
-- `project/dist/**` (build output)
 
-If a backend change appears to require a UI edit, the backend design is wrong. Stop and say so.
-`ARCHITECTURE.md` §2.6 exists precisely so the schema can be rebuilt without touching the UI: the
-old table names survive as read-only compatibility views. Use that mechanism instead of editing a
-component.
+Those belong to nackjub. If a backend change seems to require editing the dashboard, the
+backend design is wrong, or the contract needs renegotiating — say so instead of editing.
+`project/dist/**` is build output and is never edited or committed.
 
 A test that can only pass by editing a UI file is not a passing test.
 
-## 2. Security: OWASP Top 10 is mandatory
+## 2. Security — OWASP Top 10 for this stack
 
-All generated code is written and reviewed against the OWASP Top 10. These are the project's
-obligations for a service that ingests field telemetry and calls a third-party LLM.
-
-| OWASP | Obligation on this project |
+| OWASP | Obligation |
 | --- | --- |
-| A01 Broken Access Control | `anon` and `authenticated` get `SELECT` only, on every table and view. `readings` has no `UPDATE` or `DELETE` policy for any role. A path derived from input is resolved once at the boundary and rejected if it falls outside the configured root — an error, never a write. |
-| A02 Cryptographic Failures | Secrets come only from the process environment or `backend/.env`, are typed `SecretStr`, and never appear in a log, a `repr`, an exception, an HTTP response, a commit or a PR body. `backend/.env.example` holds placeholders only. Never a weak hash for a security purpose (SHA-256 for the insight cache key is a cache key, not a security control, and is labelled as such). |
-| A03 Injection | Parameterised SQL only; never a string-built query. Subprocesses are invoked with an argument list, never `shell=True`, and never with an interpolated path or user value. **LLM output is data** — never `exec`, `eval`, `import`, a SQL fragment, a shell word, a file path, or a branch condition. |
-| A04 Insecure Design | Detection proposes; a human acknowledges. No automatic control of campus hardware, ever, without a new ADR in `ARCHITECTURE.md`. `LLM_ENABLED` defaults false; ingest is closed without a token. |
-| A05 Security Misconfiguration | Never weaken a control to make a test pass. `CORS_ORIGINS` is an explicit allow-list, never `*`, while a token-authenticated route is mounted. Every suppression carries a same-line reason. |
-| A06 Vulnerable Components | Dependency floors pinned in `backend/pyproject.toml`. Bandit on `backend/app` stays at zero findings. |
-| A07 Authentication Failures | Three separate credentials — ingest token, operator token, Supabase anon — never interchangeable. Compared with `secrets.compare_digest`. A wrong token response reveals nothing about the expected value. |
-| A08 Data Integrity | `readings` is append-only. A backfill migration is verified by row-count and checksum parity against the legacy table before anything depends on it. Every migration has a `-- DOWN` section. |
-| A09 Logging and Monitoring Failures | **No silent failure.** Anything dropped, skipped, rejected or truncated is reported to the operator — in the response (`rejected[]`) and in `event_log` with a code. An empty list means "nothing found" and nothing else. Never return `[]` on an exception. Never leave a quality gate pointed at a file nothing produces (see `ARCHITECTURE.md` D2). |
-| A10 SSRF | The only outbound host is the OpenAI API base, taken from settings. A URL appearing in a reading, a log row, an anomaly or an LLM response is display text and is **never fetched**. |
+| A01 | The API is unauthenticated by design in phase 1, so validation is the control. There is no destructive endpoint: no `DELETE` route, and `readings` has no update or delete path in `store.ts`. Never add one "for testing". |
+| A02 | Secrets only from the environment or `project/.env`, which is git-ignored. `project/.env.example` holds placeholders. A secret never appears in a log, an error, an HTTP response, a commit or a PR body. **Never commit `.env`. Never commit `dist/`.** |
+| A03 | Prepared statements only (`better-sqlite3`); never a template-built SQL string. No `child_process` with a shell — argument-array form only, never an interpolated command string. Never `eval` or `new Function` on anything that came in over the wire. |
+| A04 | The system reports; it never controls hardware. No endpoint actuates anything, and none may be added without agreement in `project/ARCHITECTURE.md`. |
+| A05 | `CORS_ORIGINS` is an explicit allow-list, never `*`, once deployed. Body capped at 10 KB per the contract. Never weaken a control to make a test pass. |
+| A06 | Dependency floors pinned in `package.json`. `npm audit` findings are reviewed and reported, not ignored. |
+| A07 | No user accounts in phase 1. If a token is ever added, compare with a timing-safe comparison and never reveal the expected value in an error. |
+| A08 | `readings` is append-only. Every schema change ships as a migration with a documented rollback. |
+| A09 | **No silent failure.** Anything rejected, skipped or truncated is reported to the caller in `errors[]` and written to `events` with a reason. An empty array means "nothing found" and nothing else — never return `[]` to swallow an exception. |
+| A10 | The server fetches no URL that came from a payload, a reading or a log row. Such values are display text. |
 
-Never execute a destructive terminal or SQL command without explicit user confirmation —
-`DROP`, `TRUNCATE`, an unbounded `DELETE`, `git reset --hard`, `git push --force`, `rm -rf`.
+Never run a destructive terminal or SQL command without explicit confirmation — `DROP`,
+`TRUNCATE`, an unbounded `DELETE`, `rm -rf`, `git reset --hard`, `git push --force`.
 
-Never commit a real credential, not even in a test fixture. A fixture secret must be
-self-labelling, e.g. `OPENAI_API_KEY=sk-test-not-a-real-key-fixture-only`.
+Never commit a real credential, not even in a fixture. Fixture secrets must be self-labelling,
+e.g. `API_TOKEN=test-not-a-real-token`.
+
+Files received from outside the repository (hand-off zips, downloads) are untrusted: extract
+them into their own empty directory outside the repo, review before copying anything in, and
+never copy a `.env` across.
 
 ## 3. Engineering rules
 
-- **No production workaround to serve a test.** Do not let a module reach into `tests/` or sniff
-  a path for a fixture directory. Inject different test behaviour as a parameter.
-- **Limits, exclusions, thresholds and paths are configuration, not constants with exceptions.**
-  `WASTE_THRESHOLD_A`, `Z_LIMIT`, `MIN_HISTORY`, `MAD_FLOOR`, the tariff and the emission factor
-  are settings with documented defaults, not literals sprinkled through the code.
-- **Translate third-party exceptions at the module boundary.** A `postgrest`, `httpx`, `openai`
-  or `pydantic` exception never escapes its module. Every boundary raises a `HamsterHubError`
-  subclass.
-- **Never infer success or failure from an exit code or a truthy value alone.** Supabase can
-  return `200` with an `error` payload; inspect the payload.
+- **No production workaround to serve a test.** Never let a module detect test paths or reach
+  into test fixtures. Inject differing behaviour as a parameter.
+- **Thresholds, limits, paths and assumptions are configuration**, with today's values as
+  defaults — not literals spread through the code. `WASTE_THRESHOLD_A`, `MIN_HISTORY`,
+  `Z_LIMIT`, `HISTORY_WINDOW`, `MAX_BODY_BYTES`, `READINGS_MAX_LIMIT`, `CORS_ORIGINS`.
+- **One definition of the rule.** The server imports `project/src/engine/energy.ts`. Never
+  reimplement the threshold or the z-score server-side — two copies drift and the report then
+  cites a number the code does not use.
+- **Translate third-party exceptions at the module boundary.** A `better-sqlite3` or `express`
+  error never escapes its module; every boundary throws an `AppError` subclass.
+- **Never infer success from a status code alone.** Inspect the payload.
 - **Never return an empty result to mask a failure.**
-- **Resolve a path once, at the boundary, and pass the resolved value down.** Never depend on the
-  process working directory.
-- **A `# nosec`, `# noqa` or `# type: ignore` needs a same-line reason**, and the suppressed set
-  is audited with `bandit -r backend/app --ignore-nosec`.
+- **Resolve a path once, at the boundary**, and pass the resolved value down.
+- **Every suppression needs a same-line reason** — `// eslint-disable-next-line ... — why`.
 - **Verify a security control by breaking it first.** A control that passes while disabled was
-  never tested. `ARCHITECTURE.md` §3.3 is the required negative-test block.
-- **Assert on identity, not counts.** Assert *which* reason codes fired, never
-  `len(codes) == 2`.
+  never tested. A validation test must show the bad input being rejected *and* that the same
+  input would otherwise have been accepted.
+- **Assert on identity, not counts.** Assert *which* reasons fired, never `reasons.length === 2`.
 - **Reproduce before fixing, prove after fixing.** Every defect report carries the command and
   the measured output before and after.
-- **Reason codes, not prose, out of pure modules.** A detector returns
-  `STAT_ABOVE_ROOM_BASELINE`; a presentation layer turns it into Thai. Do not repeat the pattern
-  in `project/src/engine/energy.ts`, which returns Thai sentences from a pure function.
+- **Honest naming.** Without L4 built, the system is *rule-based + statistical anomaly
+  detection*, never "machine learning". Synthetic data is labelled synthetic in every report.
+  The tariff, emission factor and idle-hours numbers are assumptions and are shown as such.
 
 ## 4. Workflow
 
-- Work in self-contained, testable micro-steps — one scoped task at a time, following the
-  `IMPL-n` sequence in `ARCHITECTURE.md` §2.9.
-- **Documentation first.** Architecture is written and agreed before code. A change that
-  contradicts `ARCHITECTURE.md` updates `ARCHITECTURE.md` in the same commit, as a new ADR row.
-- Nothing is done until the gate block in `ARCHITECTURE.md` §3 passes. **Paste real output.**
-  Never describe a result you did not run.
-- **Windows runner.** When `uv run` fails with
-  `Failed to query Python interpreter: Access is denied. (os error 5)`, the environment is at
-  fault, not the repository: uv's interpreter discovery probes the zero-byte Microsoft Store App
-  Execution Alias stubs under `%LOCALAPPDATA%\Microsoft\WindowsApps\` and treats a failed query
-  as fatal instead of skipping the entry. Run every gate through the project interpreter instead,
-  and state in your report which runner you used:
-
-  ```bash
-  .venv/Scripts/python.exe -m pytest -q
-  ```
-
-  Do not stop for this, and never add `uv` to a script or a test to work around it. `uv sync` is
-  the only command that needs uv, and only when dependencies change.
-- **Never push to `main`.** Work on a branch (`docs/...`, `feat/...`, `fix/...`) and push that.
-  Commit after each completed step.
-- Keep the repository private. Use the GitHub noreply address for `user.email`.
-- Report honestly: show test failures, and say plainly when a step was skipped or left unverified.
+- Work in small, self-contained, verifiable steps, one at a time.
+- **`project/server/api.test.ts` is the acceptance test for M1.** The real service must pass it
+  unchanged, against the same contract the mock satisfies.
+- Nothing is done until the gate in `ARCHITECTURE.md` §3 passes. **Paste real output.** Never
+  describe a result you did not run.
+- **Never push to `main`.** Work on a branch (`feat/...`, `fix/...`, `docs/...`).
+- Commit after each completed step. Use the GitHub noreply address for `user.email`.
+- Report honestly: show failures, and say plainly when a step was skipped or left unverified.
 - End every response with one short line giving the verification command.
+
+Gate, from `project/`:
+
+```bash
+npm ci && npm run typecheck && npm run lint && npm test && npm run build
+```
+
+If a Node tool is ever wrapped in `uv`, don't — `uv run` fails on this machine with
+`Failed to query Python interpreter: Access is denied. (os error 5)`, because uv's interpreter
+discovery probes the zero-byte Microsoft Store alias stubs under
+`%LOCALAPPDATA%\Microsoft\WindowsApps\`. State which runner you used in every report.
 
 ## 5. Efficiency
 
-- Keep responses concise and targeted. No preambles, no restating the request, no summarising
-  what the reader just wrote.
+- Be concise. No preambles, no restating the request, no summarising what the reader just wrote.
 - Never re-read a file already in context. Never rewrite a whole file to change a few lines —
-  output a diff or the affected function only.
-- When context is missing, stop and ask one or two sharp questions. Guessing spends budget twice:
-  once on the wrong answer and once on its correction.
+  show a diff or the affected function.
+- When context is missing, stop and ask one or two sharp questions rather than guessing.
 
 ## 6. Communication
 
-- All chat replies to the user are in **Thai**.
-- Code, identifiers, comments, documentation content and commit messages stay in **English**.
-- User-facing strings that the product displays (insight text, operator notes) are Thai by
-  design, produced at the presentation boundary from reason codes — never hard-coded inside a
-  pure module.
+- Chat replies to the user are in **Thai**.
+- Code, identifiers, comments, documentation and commit messages are in **English**.
+- Strings the product shows users are Thai by design and are produced at the presentation
+  boundary from reason codes — the contract's `reasons[]` carries them. Do not hard-code Thai
+  prose deeper than that boundary.
 - Skip pleasantries. Go straight to the technical answer or the command.

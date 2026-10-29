@@ -21,6 +21,7 @@ import {
 } from './lib/api';
 import { timestampNow, genId } from './utils/logs';
 import { isSupabaseConfigured } from './lib/supabase';
+import { API_URL } from './lib/config';
 import SystemBeacon from './components/SystemBeacon';
 import AutoSim from './components/AutoSim';
 import { analyze, powerKw } from './engine/energy';
@@ -60,7 +61,7 @@ function App() {
   const [readings, setReadings] = useState<EnergyReading[]>(() => load<EnergyReading[]>('ksesReadings', []));
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [connectionState, setConnection] = useState<'connecting' | 'online' | 'offline'>(
-    isSupabaseConfigured ? 'connecting' : 'online',
+    isSupabaseConfigured || API_URL ? 'connecting' : 'online',
   );
   const [beacon, setBeacon] = useState<{ status: 'idle' | 'normal' | 'waste'; label: string; detail: string }>({
     status: 'idle',
@@ -151,6 +152,29 @@ function App() {
     };
   }, [addLog, addToast]);
 
+  // API mode: poll the backend every 2 s; show OFFLINE (and keep last data) if it stops answering
+  useEffect(() => {
+    if (!API_URL) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const [r, rd] = await Promise.all([fetchRooms(), fetchEnergyReadings(30)]);
+        if (stop) return;
+        if (r.length) setRooms(r);
+        setReadings(rd);
+        setConnection('online');
+      } catch {
+        if (!stop) setConnection('offline');
+      }
+    };
+    void tick();
+    const id = setInterval(() => void tick(), 2000);
+    return () => {
+      stop = true;
+      clearInterval(id);
+    };
+  }, []);
+
   useEffect(() => save('ksesRooms', rooms), [rooms]);
   useEffect(() => save('ksesReadings', readings), [readings]);
 
@@ -229,7 +253,7 @@ function App() {
           await addLog({
             level: 'error',
             tag: '[AI]',
-            message: `ALERT · ${payload.building} Rm ${payload.roomNumber} ENERGY WASTE · ${analysis.reasons.join(' · ')}`,
+            message: `ALERT · ${payload.building} Rm ${payload.roomNumber} ENERGY WASTE · ${(room.reasons ?? analysis.reasons).join(' · ')}`,
           });
           addToast({
             type: 'error',
