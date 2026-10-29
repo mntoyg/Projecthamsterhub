@@ -1,0 +1,118 @@
+# Paths Claude must not read, index or edit in this repository.
+# Rationale is in AGENTS.md §1 (scope) and §2 (A02 secrets).
+
+# --- Secret-bearing: never read, never stage ---
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+**/!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+**/service-account*.json
+
+# --- Build output ---
+project/dist/
+project/build/
+project/.vite/
+backend/dist/
+backend/build/
+**/__pycache__/
+*.py[cod]
+
+# --- Dependencies ---
+node_modules/
+**/node_modules/
+.venv/
+**/.venv/
+venv/
+site-packages/
+
+# --- Lockfile and dependency noise (large, machine-generated) ---
+project/package-lock.json
+yarn.lock
+pnpm-lock.yaml
+uv.lock
+poetry.lock
+
+# --- Caches, coverage and tool state ---
+.cache/
+.parcel-cache/
+.eslintcache
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+*.lcov
+.scannerwork/
+
+# --- ML artifacts: rebuilt by backend/scripts/train_detector.py, never committed ---
+models/
+backend/models/
+*.joblib
+*.pkl
+*.onnx
+*.h5
+*.pt
+*.safetensors
+data/raw/
+data/interim/
+*.parquet
+*.feather
+
+# --- UI layer: READ-ONLY and OUT OF SCOPE (AGENTS.md §1) ---
+# Listed so no agent edits them. Read them only when a backend contract depends on
+# what they query; nothing here may be modified.
+project/src/components/
+project/src/App.tsx
+project/src/main.tsx
+project/src/index.css
+project/index.html
+project/tailwind.config.js
+project/postcss.config.js
+
+# --- Media and binaries ---
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+*.svg
+*.mp4
+*.mov
+*.webm
+*.mp3
+*.wav
+*.woff
+*.woff2
+*.ttf
+*.eot
+*.pdf
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# --- Logs and local scratch ---
+logs/
+backend/logs/
+*.log
+npm-debug.log*
+tmp/
+.tmp/
+scratch/
+
+# --- Editor / OS ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
