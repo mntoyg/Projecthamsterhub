@@ -1,0 +1,33 @@
+name: CI
+
+# GitHub Actions only reads workflows from .github/workflows at the REPOSITORY root.
+# The hand-off placed this file at project/.github/workflows/, one level too deep, so no
+# run was ever registered. Moved here, with two further fixes:
+#   - Node 22, because server/db.ts uses node:sqlite, which needs Node >= 22.5
+#   - working-directory: project, because package.json is not at the repository root
+on: [push, pull_request]
+
+defaults:
+  run:
+    working-directory: project
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history, for SonarCloud once it is connected
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          # resolved from the repository root, so it is not affected by defaults.run
+          cache-dependency-path: project/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
