@@ -267,6 +267,7 @@ source commit ที่ตรวจคือ `7c3bff33f4f938a777605bb5810c29c89b
 
 - GitHub Actions run [40833235157](https://github.com/mntoyg/Projecthamsterhub/actions/runs/40833235157) เป็น event `push` บน branch และ SHA นี้; job `build` สรุป `success` ทุกขั้น: `npm ci`, typecheck, lint, test และ build
 - local `npm run typecheck` และ `npm run lint` ผ่าน; `npm test` ผ่าน 5 files / 73 tests (ครั้งแรก sandbox ปฏิเสธ `realpath` ด้วย `EPERM`; รันซ้ำในสิทธิ์ตรวจสอบแล้วผ่าน); `npm run build -- --outDir <temp>` ผ่าน 1,646 modules โดยไม่เขียนทับ `project/dist/`
+- ตรวจทบทวนเอกสาร commit `b737e9d` ซ้ำใน sandbox นี้: typecheck/lint ผ่าน แต่ `npm test` และ build ถูก sandbox ปฏิเสธที่ `realpath` ด้วย `EPERM` ก่อนเริ่มรัน tests/build จึงไม่ใช่ผลทดสอบที่ยืนยันว่าผ่านหรือเป็น assertion/compile failure; หลักฐาน CI ข้างต้นครอบคลุม source SHA `7c3bff3` ส่วน commit `b737e9d` เป็นเอกสารเท่านั้นและยังไม่มี CI ยืนยัน
 - `npm ci` ไม่รันซ้ำใน working tree เพราะคำสั่งนี้จะถอด `node_modules`; ใช้ผล install จาก CI ของ SHA เดียวกัน และตรวจแล้วว่าเครื่องมี `tsc`/`vitest` อยู่
 - API smoke แบบ in-process + HTTP ใช้ SQLite `:memory:`: ห้องเริ่มต้น 6 ห้องและ ID ไม่ซ้ำ; POST ถูกต้องได้ 200/`Energy Waste`, GET readings คืน power 4.4 kW; POST ผิดได้ 400 พร้อม `errors[]` และ health ยัง 200; CORS อนุญาต `http://localhost:5173` รวม preflight และไม่คืน allow-origin ให้ origin อื่น
 - smoke ต่อหลังมีข้อมูลและสร้าง app ใหม่บน DB เดิม: readings ยังอยู่, rooms ยังเป็น 6 ID ที่ถูกต้อง, POST ห้องเดิมไม่สร้าง duplicate

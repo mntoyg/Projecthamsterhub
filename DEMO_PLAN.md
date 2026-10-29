@@ -289,6 +289,7 @@ cd project; $env:API_URL='http://localhost:8799'; npm run simulate -- after
 | `npm run lint` | ผ่านใน working tree |
 | `npm test` | ผ่าน 5 files / 73 tests; ครั้งแรก sandbox ปฏิเสธ `realpath` ด้วย `EPERM`, รันซ้ำในสิทธิ์ตรวจสอบแล้วผ่าน |
 | `npm run build -- --outDir <temp>` | ผ่าน; 1,646 modules; ไม่เขียนทับ `project/dist/` |
+| ตรวจทบทวน commit เอกสาร `b737e9d` ใน sandbox นี้ | typecheck/lint ผ่าน; การรัน tests/build ถูก sandbox ปฏิเสธที่ `realpath` ด้วย `EPERM` ก่อนเริ่ม จึงใช้อ้างว่าผ่าน/ไม่ผ่านตัวโค้ดไม่ได้; CI run ด้านบนยืนยัน source SHA `7c3bff3` ไม่ใช่ commit เอกสารนี้ |
 | API smoke (Express จริง + SQLite `:memory:`) | health/rooms/readings ผ่าน; POST ถูกต้อง 200, ผิด 400 และ health ยัง 200; CORS allow/preflight ผ่าน, origin ที่ไม่อนุญาตไม่มี ACAO |
 | seed DB ว่างและ DB มีข้อมูล | เริ่มว่างได้ 6 canonical IDs; หลัง POST และ restart บน DB เดิมยัง 6 ห้อง ไม่มี duplicate |
 | DB ไฟล์เดิม (read-only) | `k-ses.db` มี 7 rooms พร้อมคู่เก่า/ใหม่; `k-ses-demo.db` มี 12 rooms ซ้ำ; `verify-fix.db` มี 6 IDs ถูกต้อง — ไม่แก้ไฟล์เหล่านี้ ใช้ `:memory:` ในเดโม |
