@@ -12,7 +12,8 @@
     "test": "vitest run",
     "server": "tsx server/index.ts",
     "mock-api": "tsx server/mock-api.ts",
-    "simulate": "tsx scripts/simulator.ts"
+    "simulate": "tsx scripts/simulator.ts",
+    "evaluate": "tsx scripts/evaluate.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

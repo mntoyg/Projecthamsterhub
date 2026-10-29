@@ -33,6 +33,18 @@ CREATE TABLE IF NOT EXISTS readings (
 CREATE INDEX IF NOT EXISTS readings_room_ts_idx ON readings (room_id, ts DESC);
 CREATE INDEX IF NOT EXISTS readings_ts_idx      ON readings (ts DESC);
 
+-- L3: one rolling baseline per room per hour-of-week (0..167, Monday 00:00 = 0).
+-- Derived state, rebuildable from readings; losing it costs accuracy, not data.
+CREATE TABLE IF NOT EXISTS baselines (
+  room_id      TEXT    NOT NULL REFERENCES rooms(id),
+  hour_of_week INTEGER NOT NULL,
+  n            INTEGER NOT NULL,
+  mean         REAL    NOT NULL,
+  variance     REAL    NOT NULL,
+  updated_at   INTEGER NOT NULL,
+  PRIMARY KEY (room_id, hour_of_week)
+);
+
 -- Nothing is dropped silently: every rejection and every internal failure lands here.
 CREATE TABLE IF NOT EXISTS events (
   id      INTEGER PRIMARY KEY AUTOINCREMENT,

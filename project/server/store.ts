@@ -2,6 +2,7 @@
 // Driver exceptions are translated to StorageError here and never escape.
 import type { DatabaseSync } from 'node:sqlite';
 import { StorageError } from './errors';
+import { EMPTY_BASELINE, type BaselineStats } from './baseline';
 import type { EnergyReading, Room, RoomStatus } from '../src/types';
 
 type RoomRow = {
@@ -85,6 +86,15 @@ export function createStore(db: DatabaseSync) {
     recentByRoom: db.prepare('SELECT * FROM readings WHERE room_id = ? ORDER BY ts DESC, id DESC LIMIT ?'),
     recentAll: db.prepare('SELECT * FROM readings ORDER BY ts DESC, id DESC LIMIT ?'),
     insertEvent: db.prepare('INSERT INTO events (room_id, level, message, ts) VALUES (?, ?, ?, ?)'),
+    getBaseline: db.prepare('SELECT n, mean, variance FROM baselines WHERE room_id = ? AND hour_of_week = ?'),
+    putBaseline: db.prepare(`
+      INSERT INTO baselines (room_id, hour_of_week, n, mean, variance, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(room_id, hour_of_week) DO UPDATE SET
+        n = excluded.n,
+        mean = excluded.mean,
+        variance = excluded.variance,
+        updated_at = excluded.updated_at`),
   };
 
   const guard = <T>(what: string, fn: () => T): T => {
@@ -154,6 +164,22 @@ export function createStore(db: DatabaseSync) {
         roomId ? q.recentByRoom.all(roomId, limit) : q.recentAll.all(limit),
       ) as ReadingRow[];
       return rows.map(toReading).reverse();
+    },
+
+    /** L3 state for one room at one hour-of-week. EMPTY_BASELINE when it has never been seen. */
+    getBaseline(roomId: string, hourOfWeek: number): BaselineStats {
+      const row = guard('getBaseline', () => q.getBaseline.get(roomId, hourOfWeek)) as
+        | { n: number; mean: number; variance: number }
+        | undefined;
+      return row
+        ? { n: Number(row.n), mean: Number(row.mean), variance: Number(row.variance) }
+        : EMPTY_BASELINE;
+    },
+
+    putBaseline(roomId: string, hourOfWeek: number, stats: BaselineStats): void {
+      guard('putBaseline', () =>
+        q.putBaseline.run(roomId, hourOfWeek, stats.n, stats.mean, stats.variance, Date.now()),
+      );
     },
 
     /** No silent failure: anything rejected, skipped or broken is recorded here. */
