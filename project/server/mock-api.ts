@@ -5,33 +5,15 @@ import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { analyze, monthlyWaste, powerKw } from '../src/engine/energy';
 import { INITIAL_ROOMS } from '../src/data/rooms';
-import type { EnergyReading, Room, SimulationPayload } from '../src/types';
+import { validate } from './validate';
+import type { EnergyReading, Room } from '../src/types';
+
+// The contract's field rules moved to ./validate so the mock and the real server
+// cannot drift apart. Re-exported here because api.test.ts imports it from this module.
+export { validate };
 
 const MAX_BODY = 10_000;
 const MAX_READINGS = 500;
-const ROOM_RE = /^[\p{L}\p{N} _-]{1,12}$/u;
-
-type Validation = { ok: true; value: SimulationPayload } | { ok: false; errors: string[] };
-
-export function validate(body: unknown): Validation {
-  const errors: string[] = [];
-  const b = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>;
-  const building = typeof b.building === 'string' ? b.building.trim() : '';
-  const roomNumber = typeof b.roomNumber === 'string' ? b.roomNumber.trim() : '';
-  const voltage = b.voltage === undefined ? 220 : b.voltage;
-  if (!building || building.length > 40) errors.push('building is required (max 40 chars)');
-  if (!ROOM_RE.test(roomNumber)) errors.push('roomNumber must be 1-12 chars: letters, digits, space, - or _');
-  if (typeof b.current !== 'number' || !Number.isFinite(b.current) || b.current < 0 || b.current > 100)
-    errors.push('current must be a number between 0 and 100 (A)');
-  if (typeof voltage !== 'number' || !Number.isFinite(voltage) || voltage < 0 || voltage > 500)
-    errors.push('voltage must be a number between 0 and 500 (V)');
-  if (typeof b.motion !== 'boolean') errors.push('motion must be a boolean');
-  if (errors.length) return { ok: false, errors };
-  return {
-    ok: true,
-    value: { building, roomNumber, current: b.current as number, voltage: voltage as number, motion: b.motion as boolean },
-  };
-}
 
 export function createMockApi(): { server: Server } {
   const rooms = new Map<string, Room>(INITIAL_ROOMS.map((r) => [r.id, r]));
