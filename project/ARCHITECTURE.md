@@ -267,7 +267,8 @@ erDiagram
 - รัน gate ในสำเนาชั่วคราวที่สร้างจาก commit นี้: `npm ci`, typecheck, lint, test (5 files / 57 tests) และ build ผ่าน สำเนานี้แยกจาก working tree และไม่มี `.env`, ฐานข้อมูล หรือ `dist`; npm 12 แจ้งว่าไม่ได้รัน esbuild postinstall ตาม allow-scripts แต่ Vite build ผ่านจริง
 - รัน `npm run evaluate` จากสำเนาเดียวกัน: seed 42 ให้ผลตรงกับรายงานและทำซ้ำได้ (SHA-256 ของรายงานตรงกันสองครั้ง); seeds 7, 99 และ 2026 ก็สร้างผลได้ รายงาน `project/EVALUATION.md` ใน working tree ไม่ถูกเขียนทับ
 - `project/server/app.test.ts` ทดสอบ Express API จริงกับ SQLite ในหน่วยความจำและผ่านใน test suite ส่วน `project/server/api.test.ts` เรียก `createMockApi` จึงเป็น test ของ mock ไม่ใช่ API จริง ตามถ้อยคำใน AGENTS.md ที่ระบุให้ `api.test.ts` เป็น acceptance test ของบริการจริง ประเด็นนี้ยังไม่ตรงกันและต้องแก้ความเข้าใจของ acceptance test ก่อนปิด M1 อย่างเป็นทางการ
-- `npm ci` ใน `project/` เดิมยังติด `EPERM` ขณะจัดการ esbuild; ไม่ได้ลบหรือแทนที่ `node_modules` เดิม การทดสอบ endpoint ผ่าน TCP จาก process แยกถูก sandbox ปฏิเสธ แม้ตัว server จะเริ่มและ test แบบ in-process ผ่านแล้ว
+- Backend in-process smoke ในสำเนาชั่วคราวใช้ `DB_FILE=:memory:` ผ่านครบ: health 200, seeded rooms 6 ห้อง, POST telemetry 200 พร้อมผล `Energy Waste`, GET readings พบข้อมูลที่บันทึก, invalid telemetry 400 และ health ยัง 200; CORS origin ที่อนุญาตมี header ตรงค่า ส่วน origin ที่ไม่อนุญาตไม่มี `Access-Control-Allow-Origin`; `/api/events` ตอบ 404 ตาม contract ปัจจุบัน
+- `npm ci` ใน `project/` เดิมยังติด `EPERM` ขณะจัดการ esbuild; ไม่ได้ลบหรือแทนที่ `node_modules` เดิม การทดสอบ TCP จาก process แยกถูก sandbox ปฏิเสธ แต่ in-process smoke และ test suite ผ่านแล้ว
 - ยังไม่มีการ deploy ผลตรวจข้างต้นยืนยัน CI, build, integration tests และ evaluation เท่านั้น ไม่ยืนยันบริการที่โฮสต์จริง
 
 ## 9. ประเด็นที่ต้องตัดสินใจ (Open Decisions)
