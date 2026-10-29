@@ -127,6 +127,28 @@ describe('persistence', () => {
 });
 
 describe('fault tolerance', () => {
+  it('records the rejected field reasons in events and keeps serving requests', async () => {
+    const expectedErrors = [
+      'building is required (max 40 chars)',
+      'current must be a number between 0 and 100 (A)',
+    ];
+    const expectedEventMessage = `REJECTED telemetry: ${expectedErrors.join('; ')}`;
+    const before = db.prepare('SELECT COUNT(*) AS n FROM readings WHERE room_id = ?').get('ecc-402') as { n: number };
+
+    const res = await post({ ...good, building: 'x'.repeat(41), current: -1 });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as ErrorResponse).errors).toEqual(expectedErrors);
+
+    const event = db.prepare('SELECT level, message FROM events WHERE message = ?').get(expectedEventMessage) as
+      | { level: string; message: string }
+      | undefined;
+    expect(event).toEqual({ level: 'warn', message: expectedEventMessage });
+
+    const after = db.prepare('SELECT COUNT(*) AS n FROM readings WHERE room_id = ?').get('ecc-402') as { n: number };
+    expect(after.n).toBe(before.n);
+    expect((await fetch(`${base}/api/health`)).status).toBe(200);
+  });
+
   it('records every rejection instead of dropping it', () => {
     const store = createStore(db);
     const before = store.listRooms().length;
