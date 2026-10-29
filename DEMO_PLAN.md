@@ -69,7 +69,7 @@ git branch --show-current; git status --short; git log --oneline -3
 cd project && npm ci && npm run typecheck && npm run lint && npm test && npm run build
 ```
 
-ที่ถูกต้อง: `added 372 packages` · typecheck/lint ไม่พิมพ์ error · `Test Files 5 passed (5)` `Tests 57 passed (57)` · `✓ built in ~11s`
+ที่ถูกต้อง: `added 372 packages` · typecheck/lint ไม่พิมพ์ error · `Test Files 5 passed (5)` `Tests 73 passed (73)` · `✓ built in ~10s`
 
 > คำเตือน `esbuild@0.28.2 (postinstall ... blocked)` เป็นเรื่องปกติของ npm 12 และ Vite build ยังผ่าน ไม่ต้องแก้
 
@@ -205,7 +205,8 @@ cd project; $env:API_URL='http://localhost:8799'; npm run simulate -- after
 
 | ลำดับ | งาน | เวลาที่ประเมิน | ทำทันคืนนี้ไหม |
 |---|---|---|---|
-| 1 | **แก้บั๊กห้องซ้ำ** — `seed()` ใน `project/server/app.ts` ใส่ห้องด้วย id ที่เขียนมือ (`ecc-402`) แต่ `roomId(building, roomNumber)` สร้าง `ecc-building-402` พอ simulator ยิงเข้ามา จึงเกิดห้องใหม่ซ้อน ผลคือ dashboard แสดง **12 ห้องแทนที่จะเป็น 6** และ 6 ห้องแรกค้างนิ่ง (ยืนยันบนหน้าจอแล้ว: `ROOMS MONITORED 12`, `7 of 12 rooms`) | 20–30 นาที รวมเทสต์ | **ทัน** |
+| 1 | ~~**แก้บั๊กห้องซ้ำ**~~ — **เสร็จแล้ว** ที่ `fe354be` บน branch `fix/duplicate-seeded-rooms` `seed()` ใช้ `roomId(room.building, room.roomNumber)` แล้ว ยืนยันบนหน้าจอ: `ROOMS MONITORED 6`, `5 of 6 rooms`, zone ถูกต้องทุกห้อง | — | **เสร็จ** |
+| 1.5 | **push branch ขึ้น fork เพื่อให้ CI รัน** — ยังไม่เคยมี CI รันบนโค้ดชุดนี้เลย ถ้าไม่ push จะอ้างบนเวทีว่า "CI ผ่าน" ไม่ได้ | 5 นาที + รอ CI ~3 นาที | **ทัน** |
 | 2 | ซ้อมเดโมเต็มรอบตาม runbook ข้อ 0–8 จับเวลา | 20 นาที | **ทัน** |
 | 3 | ถ่าย screenshot สำรอง 4 รูป ตามหัวข้อ 4 | 10 นาที | **ทัน** |
 | 4 | ซ้อม fallback: ปิด `VITE_API_URL` แล้วเปิด dashboard ใหม่ ดูว่า local mode ใช้ได้ | 5 นาที | **ทัน** |
@@ -216,7 +217,7 @@ cd project; $env:API_URL='http://localhost:8799'; npm run simulate -- after
 | งาน | เวลาที่ประเมิน | ทำทันคืนนี้ไหม |
 |---|---|---|
 | Deploy API ขึ้น Render + build dashboard ชี้ไปที่ URL จริง | 1.5–3 ชั่วโมง รวมแก้ปัญหา และต้องสมัครบัญชี | **ไม่แนะนำให้ทำคืนก่อนเดโม** — เสี่ยงเจอ cold start 1 นาทีกลางเวที และข้อมูลหายทุก restart บน free tier ถ้าจะทำ ให้ทำหลังเดโม |
-| แก้ประเด็นชื่อ acceptance test — `project/server/api.test.ts` เรียก `createMockApi` จึงเป็นเทสต์ของ mock ส่วน `app.test.ts` คือตัวที่ทดสอบ Express จริง ขัดกับถ้อยคำใน `AGENTS.md` | 30–60 นาที (เปลี่ยนชื่อไฟล์ + แก้ถ้อยคำใน `AGENTS.md`/`ARCHITECTURE.md`) | **ทัน แต่ไม่กระทบเดโม** — ไม่มีใครถามเรื่องนี้บนเวที ทำหลังเดโมได้ |
+| ~~แก้ประเด็นชื่อ acceptance test~~ — **เสร็จแล้ว** ที่ `c1c7a89` `api.test.ts` รัน contract suite ชุดเดียวกัน (`api-contract-suite.ts`) กับทั้ง real Express + SQLite API และ mock จึงเป็น acceptance test ของบริการจริงตามถ้อยคำใน `AGENTS.md` แล้ว | — | **เสร็จ** |
 | อัดคลิปหน้าจอ 2 นาที | 20 นาที | ทัน ถ้าทำข้อ "ต้องมี" เสร็จก่อน |
 | เชื่อม SonarCloud | 30–60 นาที | ทำหลังเดโม |
 | ปิด Open Decisions: ผู้ให้บริการ deploy, ESP32 จริงหรือจำลอง | — | **ตัดสินใจคืนนี้ได้ 1 ข้อ**: สำหรับเดโมพรุ่งนี้ ใช้ตัวจำลองทั้งหมด ส่วนผู้ให้บริการ deploy ตัดสินใจหลังเดโม |
@@ -233,7 +234,8 @@ cd project; $env:API_URL='http://localhost:8799'; npm run simulate -- after
 
 | # | ความเสี่ยง | ผลกระทบถ้าเกิด | วิธีลดความเสี่ยง |
 |---|---|---|---|
-| 1 | **ห้องซ้ำ 12 ห้อง** (บั๊กในหัวข้อ 6 ข้อ 1) | ผู้ฟังเห็นห้องซ้ำกันบนจอ ถามทันที ความน่าเชื่อถือพัง และตัวเลข `ROOMS MONITORED` / `CRITICAL ROOMS` ผิด | แก้ `seed()` ให้ใช้ `roomId(building, roomNumber)` คืนนี้ (20–30 นาที) ถ้าไม่แก้ ทางเลี่ยงคือเดโมใน **local mode** อย่างเดียว ซึ่งทำให้เป้าหมายข้อ 1 (พิสูจน์ว่ามี API จริง) หายไป |
+| 1 | **เดโมจาก branch ที่ยังไม่ merge และยังไม่ push** — งานทั้งหมดกองอยู่บน `fix/duplicate-seeded-rooms` ซึ่งซ้อนบน `docs/demo-plan` ซ้อนบน `docs/architecture-plan` ไม่มีอะไรอยู่บน `main` และไม่มีอะไรขึ้น remote | ถ้าเครื่องพัง/ไฟล์หาย ไม่มีสำเนาที่ไหนเลย และอ้างไม่ได้ว่า CI ผ่านบนโค้ดชุดนี้ | push branch ขึ้น fork คืนนี้ (ไม่ใช่ `main`) แล้วรอ GitHub Actions ขึ้นเขียว |
+| 1.5 | ~~ห้องซ้ำ 12 ห้อง~~ | — | **ปิดแล้ว** ที่ `fe354be` ยืนยันบนหน้าจอ 6 ห้อง zone ถูกต้อง |
 | 2 | **`npm ci` พัง `EPERM` ในวันเดโม** | ไม่มี `node_modules` เปิด server/dashboard ไม่ได้เลย เดโมจบ | ติดตั้งให้เสร็จคืนนี้แล้ว **ห้ามรัน `npm ci` ซ้ำในวันเดโม** ถ้าจำเป็นให้ rename `node_modules` ออกไปแทนการลบ (runbook ข้อ 1 และหัวข้อ 4) |
 | 3 | **ใช้เครื่องอื่นพรีเซนต์** | ติดตั้งใหม่ไม่ทัน และยังเสี่ยง Node < 22.5 | ยืนยันเรื่องเครื่องคืนนี้ ถ้าต้องใช้เครื่องอื่นจริง ต้องติดตั้งและซ้อมบนเครื่องนั้นคืนนี้ |
 | 4 | **ข้อมูลเก่าค้างในฐานข้อมูล** — `server/data/k-ses.db` เก็บห้องและ readings จากการซ้อมสะสม | หน้าจอรกด้วยห้องและกราฟจากเมื่อวาน อธิบายยาก | ใช้ `DB_FILE` ไฟล์ใหม่ทุกครั้ง (runbook ข้อ 4) |
@@ -256,7 +258,7 @@ cd project; $env:API_URL='http://localhost:8799'; npm run simulate -- after
 | ติดตั้ง | `npm ci` | ครั้งแรก `EPERM` ที่ `@esbuild/.win32-x64-*/esbuild.exe`; หลัง rename `node_modules` ออก → `added 372 packages` |
 | typecheck | `npm run typecheck` | ผ่าน ไม่มี error |
 | lint | `npm run lint` | ผ่าน ไม่มี error |
-| test | `npm test` | `Test Files 5 passed (5)` · `Tests 57 passed (57)` |
+| test | `npm test` | `Test Files 5 passed (5)` · `Tests 57 passed (57)` — **รันซ้ำหลังแก้บั๊ก 29 ต.ค. 13:59 ได้ `Tests 73 passed (73)`** |
 | build | `npm run build` | `✓ built in 10.96s` · `dist/assets/index-kvLB6Yn6.js 308.33 kB` |
 | evaluation | `npm run evaluate` (seed 42) | ตัวเลขตรงกับ `EVALUATION.md` ทุกค่า: L1 100.0/53.5/69.7, L1+L2 90.1/66.9/76.8, L1+L2+L3 90.5/74.5/81.7 (กู้ไฟล์ภาษาไทยกลับด้วย `git checkout --` แล้ว) |
 | API health | `curl /api/health` (port 8799, DB ใหม่) | `200 {"ok":true}` |
@@ -266,7 +268,16 @@ cd project; $env:API_URL='http://localhost:8799'; npm run simulate -- after
 | readings | `GET /api/readings?limit=3` | คืน reading ที่เพิ่งบันทึก พร้อม `power` และ `timestamp` |
 | `/api/events` | `GET /api/events` | `404` ตามสัญญาปัจจุบัน |
 | simulator | `npm run simulate -- after` | ยิงทุก 2 วินาที ได้ `200 ... -> Energy Waste` ต่อเนื่อง |
-| dashboard ต่อ API | `VITE_API_URL=http://localhost:8799 npm run dev` | แสดง `API: ONLINE` และอัปเดตตาม simulator — **แต่แสดง `ROOMS MONITORED 12` แทนที่จะเป็น 6 (บั๊กห้องซ้ำ)** |
+| dashboard ต่อ API | `VITE_API_URL=http://localhost:8799 npm run dev` | แสดง `API: ONLINE` และอัปเดตตาม simulator — ก่อนแก้บั๊กแสดง `ROOMS MONITORED 12`; **หลังแก้ที่ `fe354be` แสดง `6` และ `5 of 6 rooms` ถูกต้อง** |
+
+### รอบตรวจซ้ำหลังแก้บั๊ก — 29 ต.ค. 2026 เวลา 13:59–14:05
+
+| สิ่งที่ตรวจ | ผล |
+|---|---|
+| gate ครบ 5 ขั้นบน `fix/duplicate-seeded-rooms` | `npm ci` ไม่ติด `EPERM` อีก (เพราะปิด vite dev ก่อน) · typecheck/lint ผ่าน · `Tests 73 passed (73)` · `✓ built in 9.21s` |
+| API + simulator ด้วย `DB_FILE=server/data/verify-fix.db` ใหม่ | `GET /api/rooms` ได้ **6 ห้อง** ทุกห้อง id เป็น slug (`ecc-building-402` …) และ zone เป็นค่าเดิม Engineering / Information Tech / Electrical / Mechanical ไม่ใช่ `Simulated` |
+| dashboard | `API: ONLINE` · `ROOMS MONITORED 6` · `CRITICAL ROOMS ACTIVE 5 of 6 rooms` · กราฟ ENERGY HISTORY มีข้อมูลไหลเข้า |
+| acceptance test | `api.test.ts` รัน `registerApiContractSuite` ชุดเดียวกันกับ real Express + SQLite API และ mock |
 
 ### ขั้นที่ยังไม่ได้ยืนยัน
 
@@ -279,7 +290,7 @@ cd project; $env:API_URL='http://localhost:8799'; npm run simulate -- after
 
 | M | งาน | สถานะจริง | หลักฐาน | สิ่งที่ยังค้าง |
 |---|---|---|---|---|
-| M1 | Backend Express + validation + SQLite + API | **ทำงานได้จริง ยังไม่ปิด milestone** | gate ผ่านครบ 5 ขั้น · API ตอบถูกทุก endpoint ตามสัญญา · validation ปฏิเสธถูก · CORS allow-list ทำงาน | ยังไม่ deploy · ประเด็นชื่อ acceptance test (`api.test.ts` ทดสอบ mock ไม่ใช่ของจริง) · **บั๊กห้องซ้ำใน `seed()`** |
+| M1 | Backend Express + validation + SQLite + API | **ทำงานได้จริง เหลือ deploy อย่างเดียว** | gate ผ่านครบ 5 ขั้น (73 tests) · API ตอบถูกทุก endpoint ตามสัญญา · validation ปฏิเสธถูก · CORS allow-list ทำงาน · acceptance test รันกับบริการจริงแล้ว · บั๊กห้องซ้ำปิดแล้ว | **ยังไม่ deploy** · ยังไม่ push ขึ้น remote จึงยังไม่มี CI รันบนโค้ดชุดนี้ |
 | M2 | เชื่อม Dashboard กับ API + fallback (nackjub) | **เชื่อมได้จริง** | dashboard แสดง `API: ONLINE` และอัปเดตตาม simulator | ยังไม่ได้ทดสอบ fallback `OFFLINE` ด้วยมือในรอบนี้ · งานของ nackjub |
 | M3 | L3 baseline + ชุดประเมินผล | **เสร็จและทำซ้ำได้** | `npm run evaluate` seed 42 ให้ตัวเลขตรงกับรายงานทุกค่า | ตัวเลขทั้งหมดมาจากข้อมูลสังเคราะห์ ต้องระบุทุกครั้งที่อ้างอิง |
 | M4 | L4, Telegram alert, ESP32 | **ยังไม่ทำ** | — | เป็น optional ไม่ทำก่อนเดโม |
