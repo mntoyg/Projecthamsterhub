@@ -227,9 +227,9 @@ erDiagram
 |---|---|---|
 | M0 ✅ | Frontend + Engine + Auto Simulation + CI | ส่งมอบแล้ว |
 | M0.5 ✅ | API Contract, mock API และสคริปต์จำลอง IoT | ส่งมอบแล้ว |
-| M1 | Backend Express + validation + SQLite + API | Implementation อยู่ใน branch; ยังไม่ merge หรือ deploy |
+| M1 | Backend Express + validation + SQLite + API | โค้ดอยู่ใน upstream/main และ fork/main ที่ `d98a163`; CI ผ่าน ยังไม่ได้ deploy และยังมีประเด็นชื่อ acceptance test ที่ต้องแยกให้ชัด |
 | M2 | เชื่อม Dashboard กับ API และ fallback ออฟไลน์ (nackjub) | งานของ nackjub |
-| M3 | L3 baseline และชุดประเมินผล | Implementation และรายงานอยู่ใน branch; ยังไม่ merge |
+| M3 | L3 baseline และชุดประเมินผล | โค้ดและรายงานอยู่ใน upstream/main และ fork/main; รัน evaluation ซ้ำได้จากสำเนาตรวจสอบ |
 | M4 (ทางเลือก) | L4, Telegram alert, ESP32 | ยังไม่ทำ |
 | M5 | รายงาน/พอร์ตและคลิปสาธิต | ยังไม่ทำ |
 
@@ -259,9 +259,16 @@ erDiagram
 - **M4:** เป็นทางเลือกและต้องตกลง scope ก่อนทำ หากไม่มี L4 ห้ามเรียกระบบว่า machine learning
 - **M5:** รายงานและคลิปต้องตรงกับพฤติกรรมที่ตรวจสอบได้ ระบุว่าข้อมูลเป็นข้อมูลสังเคราะห์ และระบุว่าตัวเลขค่าไฟ/คาร์บอน/ชั่วโมง idle เป็นข้อสมมติ
 
-### สถานะการตรวจสอบล่าสุด
+### สถานะการตรวจสอบล่าสุด — 2026-10-29
 
-Implementation ของ M1/M3 อยู่ใน `docs/architecture-plan` และยังไม่ merge หรือ deploy รอบตรวจล่าสุดหยุดที่ `npm ci` ด้วย `EPERM` ขณะลบ `node_modules/@esbuild/win32-x64/esbuild.exe` จึงยังยืนยัน gate ล่าสุดไม่ได้ ห้ามระบุว่า CI หรือ DoD ผ่านจนกว่าจะมี output จริงยืนยัน
+`HEAD` คือ `d98a1635fc9d70f30a29fa23749e4a8eeb32a842` และตรงกับ `main` ของทั้ง upstream และ fork
+
+- GitHub Actions `build` ของทั้งสอง repository ผ่านครบ: `npm ci`, typecheck, lint, test และ build
+- รัน gate ในสำเนาชั่วคราวที่สร้างจาก commit นี้: `npm ci`, typecheck, lint, test (5 files / 57 tests) และ build ผ่าน สำเนานี้แยกจาก working tree และไม่มี `.env`, ฐานข้อมูล หรือ `dist`; npm 12 แจ้งว่าไม่ได้รัน esbuild postinstall ตาม allow-scripts แต่ Vite build ผ่านจริง
+- รัน `npm run evaluate` จากสำเนาเดียวกัน: seed 42 ให้ผลตรงกับรายงานและทำซ้ำได้ (SHA-256 ของรายงานตรงกันสองครั้ง); seeds 7, 99 และ 2026 ก็สร้างผลได้ รายงาน `project/EVALUATION.md` ใน working tree ไม่ถูกเขียนทับ
+- `project/server/app.test.ts` ทดสอบ Express API จริงกับ SQLite ในหน่วยความจำและผ่านใน test suite ส่วน `project/server/api.test.ts` เรียก `createMockApi` จึงเป็น test ของ mock ไม่ใช่ API จริง ตามถ้อยคำใน AGENTS.md ที่ระบุให้ `api.test.ts` เป็น acceptance test ของบริการจริง ประเด็นนี้ยังไม่ตรงกันและต้องแก้ความเข้าใจของ acceptance test ก่อนปิด M1 อย่างเป็นทางการ
+- `npm ci` ใน `project/` เดิมยังติด `EPERM` ขณะจัดการ esbuild; ไม่ได้ลบหรือแทนที่ `node_modules` เดิม การทดสอบ endpoint ผ่าน TCP จาก process แยกถูก sandbox ปฏิเสธ แม้ตัว server จะเริ่มและ test แบบ in-process ผ่านแล้ว
+- ยังไม่มีการ deploy ผลตรวจข้างต้นยืนยัน CI, build, integration tests และ evaluation เท่านั้น ไม่ยืนยันบริการที่โฮสต์จริง
 
 ## 9. ประเด็นที่ต้องตัดสินใจ (Open Decisions)
 
