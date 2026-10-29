@@ -121,11 +121,26 @@ discovery probes the zero-byte Microsoft Store alias stubs under
   show a diff or the affected function.
 - When context is missing, stop and ask one or two sharp questions rather than guessing.
 
-## 6. Communication
+## 6. การสื่อสาร
 
-- Chat replies to the user are in **Thai**.
-- Code, identifiers, comments, documentation and commit messages are in **English**.
-- Strings the product shows users are Thai by design and are produced at the presentation
-  boundary from reason codes — the contract's `reasons[]` carries them. Do not hard-code Thai
-  prose deeper than that boundary.
-- Skip pleasantries. Go straight to the technical answer or the command.
+- ตอบเจ้าของเป็นภาษาไทยให้มากที่สุด และเข้าเรื่องทันที
+- รูปแบบ commit message ใช้คำนำหน้า Conventional Commits เป็นภาษาอังกฤษ แล้วตามด้วยคำอธิบายภาษาไทย
+  เช่น `fix(docs): แก้ชื่อไดรเวอร์ SQLite ให้ตรงกับโค้ดจริง` เนื้อหาใน commit อธิบายเป็นภาษาไทย
+- เขียน comment และ JSDoc ในซอร์สเป็นภาษาไทย
+- เอกสารของที่นั่งนี้เป็นภาษาไทย: `README.md`, `AGENTS.md`, `ARCHITECTURE.md` ที่ราก,
+  `DEPLOY.md`, `project/README.md` และ `project/EVALUATION.md`
+- คง `project/API_CONTRACT.md` และ `project/ARCHITECTURE.md` ไว้ตามเดิม ห้ามแปลหรือแก้
+  เว้นแต่มีการตกลงเปลี่ยนสัญญาหรือเนื้อหาร่วมกันก่อน
+- คง identifier ทุกชนิด ชื่อไฟล์ ชื่อ branch ชื่อ npm script ชื่อตัวแปรสภาพแวดล้อม
+  (`CORS_ORIGINS`, `VITE_API_URL`, `DB_FILE`, `BASELINE_K`, `MAX_BODY_BYTES`,
+  `READINGS_MAX_LIMIT`, `PORT`), path ของ API, rule ID, คำสั่งในบล็อกโค้ด,
+  ตัวเลขที่วัดได้ และชื่อ gate เป็นภาษาอังกฤษตามเดิม
+- คงข้อความใน `errors[]` และข้อความ error ภายในเป็นภาษาอังกฤษ เพราะเป็นส่วนหนึ่งของสัญญา
+  และมีเทสต์ตรวจข้อความเหล่านี้ ส่วน `reasons[]` เป็นภาษาไทยตามสัญญาและผลิตที่ presentation
+  boundary เท่านั้น ห้ามย้ายข้อความภาษาไทยลงไปในชั้นที่ลึกกว่านั้น
+- ข้อมูลที่ผลิตในรายงานต้องระบุว่าเป็นข้อมูลสังเคราะห์ ตัวเลขค่าไฟ ค่าคาร์บอน
+  และชั่วโมง idle เป็นข้อสมมติ และต้องแสดงว่าเป็นข้อสมมติ
+- ถ้าไม่มี L4 ให้เรียกระบบว่า rule-based + statistical anomaly detection ห้ามเรียกว่า
+  machine learning
+- ข้อความภาษาไทยในผลิตภัณฑ์ยังผลิตที่ presentation boundary จาก reason codes ตามสัญญา
+- หลีกเลี่ยงคำทักทาย และตอบตรงประเด็นหรือให้คำสั่งที่ตรวจสอบได้
